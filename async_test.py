@@ -3,7 +3,6 @@ from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.sampling_params import SamplingParams
 
 import argparse
-
 import json
 
 
@@ -64,7 +63,7 @@ class EEngine:
             text_outputs = " ".join(text_outputs)
             # Note: usage is not supported yet
             ret = {"text": text_outputs, "error_code": 0, "usage": {}}
-            yield (json.dumps(ret) + "\0").encode()
+            yield text_outputs
 
 
 if __name__ == "__main__":
@@ -95,5 +94,11 @@ if __name__ == "__main__":
     print(f"Made einge")
 
     eengine = EEngine(engine)
-    for v in eengine.generate_stream("User: Hello\nAssistant: ", 1):
-        print(v)
+    
+    async def run():
+        async for v in eengine.generate_stream("User: Hello\nAssistant: ", 1):
+            print(v)
+            
+    import asyncio
+    
+    asyncio.run(run())
