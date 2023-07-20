@@ -18,7 +18,7 @@ If a question does not make any sense, or is not factually coherent, explain why
 class Predictor(BasePredictor):
     def setup(self):
         self.engine = LLM(
-            model="./model_path/meta-llama/Llama-2-7b-chat-hf", dtype="float16"
+            model="./model_path/meta-llama/Llama-2-13b-chat-hf", dtype="float16"
         )
 
     def predict(

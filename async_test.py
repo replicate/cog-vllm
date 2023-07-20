@@ -7,11 +7,12 @@ import argparse
 import json
 
 
-class Engine:
+class EEngine:
     def __init__(self, engine):
         self.engine = engine
+        self.tokenizer = self.engine.engine.tokenizer
 
-    def generate_stream(
+    async def generate_stream(
         self,
         prompt,
         request_id,
@@ -22,7 +23,7 @@ class Engine:
         stop_token_ids=None,
         echo=True,
     ):
-        self.call_ct += 1
+        
 
         context = prompt
         stop_token_ids = stop_token_ids or []
@@ -52,7 +53,7 @@ class Engine:
         )
         results_generator = engine.generate(context, sampling_params, request_id)
 
-        for request_output in results_generator:
+        async for request_output in results_generator:
             prompt = request_output.prompt
             if echo:
                 text_outputs = [
@@ -93,6 +94,6 @@ if __name__ == "__main__":
     engine = AsyncLLMEngine.from_engine_args(engine_args)
     print(f"Made einge")
 
-    engine = Engine(engine)
-    for v in engine.generate_stream("User: Hello\nAssistant: ", 1):
+    eengine = EEngine(engine)
+    for v in eengine.generate_stream("User: Hello\nAssistant: ", 1):
         print(v)
