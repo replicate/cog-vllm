@@ -11,4 +11,4 @@ build:
     - "vllm==0.1.2"
 
 
-predict: "predict_batch.py:Predictor"
+predict: "predict_streaming.py:Predictor"

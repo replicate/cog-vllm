@@ -11,9 +11,10 @@ from peft import PeftModel
 import os
 
 
-DEFAULT_PROMPT = '''[INST] <<SYS>>\nYou are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe.  Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. Please ensure that your responses are socially unbiased and positive in nature.
+DEFAULT_PROMPT = """[INST] <<SYS>>\nYou are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe.  Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. Please ensure that your responses are socially unbiased and positive in nature.
 If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information.
-<</SYS>>\n<<INSTRUCTION>> [/INST]'''
+<</SYS>>\n<<INSTRUCTION>> [/INST]"""
+
 
 class Predictor(BasePredictor):
     def setup(self):
@@ -53,10 +54,10 @@ class Predictor(BasePredictor):
         prompt_template: str = Input(
             description="Template for the prompt to send to Llama v2. In this format, <<INSTRUCTION>> will get replaced by the input prompt (first argument of this api)",
             default=DEFAULT_PROMPT,
-        )
+        ),
     ) -> List[str]:
         prompt_templated = prompt_template.replace("<<INSTRUCTION>>", prompt)
-        
+
         sampling_params = SamplingParams(
             temperature=temperature,
             top_p=top_p,
@@ -64,7 +65,9 @@ class Predictor(BasePredictor):
             max_tokens=max_length,
         )
 
-        outputs = self.engine.generate([prompt_templated] * num_samples, sampling_params)
+        outputs = self.engine.generate(
+            [prompt_templated] * num_samples, sampling_params
+        )
         # Print the outputs.
         gen_texts = []
         for output in outputs:

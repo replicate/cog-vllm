@@ -4,6 +4,7 @@ from vllm.sampling_params import SamplingParams
 
 import argparse
 import json
+import asyncio
 
 
 class EEngine:
@@ -17,13 +18,11 @@ class EEngine:
         request_id,
         temperature=1.0,
         top_p=1.0,
-        max_new_tokens=256,
+        max_new_tokens=4,
         stop_str=None,
         stop_token_ids=None,
-        echo=True,
+        echo=False,
     ):
-        
-
         context = prompt
         stop_token_ids = stop_token_ids or []
         stop_token_ids.append(self.tokenizer.eos_token_id)
@@ -60,18 +59,46 @@ class EEngine:
                 ]
             else:
                 text_outputs = [output.text for output in request_output.outputs]
-            text_outputs = " ".join(text_outputs)
+            text_outputs = request_output.outputs[-1].text
             # Note: usage is not supported yet
             ret = {"text": text_outputs, "error_code": 0, "usage": {}}
+            await asyncio.sleep(2.1)
             yield text_outputs
+
+    def sync_but_yield(
+        self,
+        prompt,
+        request_id,
+        temperature=1.0,
+        top_p=1.0,
+        max_new_tokens=4,
+        stop_str=None,
+        stop_token_ids=None,
+        echo=True,
+    ):
+        loop = asyncio.get_event_loop()
+        gen = self.generate_stream(
+            prompt,
+            request_id,
+            temperature,
+            top_p,
+            max_new_tokens,
+            stop_str,
+            stop_token_ids,
+            echo,
+        )
+        while True:
+            try:
+                value = loop.run_until_complete(gen.__anext__())
+                yield value
+            except StopAsyncIteration:
+                break
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument(
-        "--model-path", type=str, default="meta-llama/Llama-2-7b-chat-hf"
-    )
+    parser.add_argument("--model-path", type=str, default="distilgpt2")
     parser.add_argument(
         "--model-names",
         type=lambda s: s.split(","),
@@ -94,11 +121,14 @@ if __name__ == "__main__":
     print(f"Made einge")
 
     eengine = EEngine(engine)
-    
-    async def run():
-        async for v in eengine.generate_stream("User: Hello\nAssistant: ", 1):
-            print(v)
-            
-    import asyncio
-    
-    asyncio.run(run())
+
+    # async def run():
+    #     async for v in eengine.generate_stream("User: Hello\nAssistant: ", 1):
+    #         print(v)
+
+    # import asyncio
+
+    # asyncio.run(run())
+
+    for v in eengine.sync_but_yield("User: Hello\nAssistant: ", 1):
+        print(v)

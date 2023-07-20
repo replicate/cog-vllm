@@ -1,4 +1,6 @@
-from vllm import LLM, SamplingParams
+from vllm import AsyncLLMEngine
+from vllm.engine.arg_utils import AsyncEngineArgs
+from vllm.sampling_params import SamplingParams
 
 import shutil
 import time
@@ -6,25 +8,75 @@ from typing import List
 import zipfile
 
 import torch
-
-
 from cog import BasePredictor, ConcatenateIterator, Input, Path
-from config import DEFAULT_MODEL_NAME, load_tokenizer, load_tensorizer, pull_gcp_file
-from subclass import YieldingLlama
 from peft import PeftModel
 import os
 
+import asyncio
+
+
+DEFAULT_PROMPT = """[INST] <<SYS>>\nYou are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe.  Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. Please ensure that your responses are socially unbiased and positive in nature.
+If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information.
+<</SYS>>\n<<INSTRUCTION>> [/INST]"""
+
 
 class Predictor(BasePredictor):
-    def __init__(self):
-        self.engine = LLM(model="meta-llama/Llama-2-13b-chat-hf")
+    def setup(self):
+        args = AsyncEngineArgs(
+            model="./model_path/meta-llama/Llama-2-13b-chat-hf",
+            dtype="float16",
+            max_num_seqs=4096,
+        )
+        self.engine = AsyncLLMEngine.from_engine_args(args)
+        self.tokenizer = self.engine.engine.tokenizer
+
+    async def generate_stream(
+        self,
+        prompt,
+        temperature=1.0,
+        top_p=1.0,
+        max_new_tokens=4,
+        stop_str=None,
+        stop_token_ids=None,
+        repetition_penalty=1.0,
+        echo=True,
+    ):
+        context = prompt
+        stop_token_ids = stop_token_ids or []
+        stop_token_ids.append(self.tokenizer.eos_token_id)
+
+        if isinstance(stop_str, str) and stop_str != "":
+            stop = [stop_str]
+        elif isinstance(stop_str, list) and stop_str != []:
+            stop = stop_str
+        else:
+            stop = []
+
+        for tid in stop_token_ids:
+            stop.append(self.tokenizer.decode(tid))
+
+        # make sampling params in vllm
+        top_p = max(top_p, 1e-5)
+        if temperature <= 1e-5:
+            top_p = 1.0
+        sampling_params = SamplingParams(
+            n=1,
+            temperature=temperature,
+            top_p=top_p,
+            use_beam_search=False,
+            stop=stop,
+            max_tokens=max_new_tokens,
+            frequency_penalty=repetition_penalty,
+        )
+        results_generator = self.engine.generate(context, sampling_params, 0)
+
+        async for request_output in results_generator:
+            prompt = request_output.prompt
+            yield request_output.outputs[-1].text
 
     def predict(
         self,
         prompt: str = Input(description=f"Prompt to send to Llama v2."),
-        num_samples: int = Input(
-            description=f"Number of samples to generate.", default=1, ge=1, le=10
-        ),
         max_length: int = Input(
             description="Maximum number of tokens to generate. A word is generally 2-3 tokens",
             ge=1,
@@ -48,25 +100,27 @@ class Predictor(BasePredictor):
             le=5,
             default=1,
         ),
-        # debug: bool = Input(
-        #     description="provide debugging output in logs", default=False
-        # )
-    ) -> List[str]:
-        prompt = "User: " + prompt + "\nAssistant: "
+        prompt_template: str = Input(
+            description="Template for the prompt to send to Llama v2. In this format, <<INSTRUCTION>> will get replaced by the input prompt (first argument of this api)",
+            default=DEFAULT_PROMPT,
+        ),
+    ) -> ConcatenateIterator[str]:
+        prompt_templated = prompt_template.replace("<<INSTRUCTION>>", prompt)
 
-        sampling_params = SamplingParams(
-            temperature=temperature,
-            top_p=top_p,
-            frequency_penalty=repetition_penalty,
-            max_tokens=max_length,
+        loop = asyncio.get_event_loop()
+        gen = self.generate_stream(
+            prompt_templated,
+            temperature,
+            top_p,
+            max_length,
+            repetition_penalty=repetition_penalty,
         )
-
-        outputs = self.engine.generate([prompt] * num_samples, sampling_params)
-        # Print the outputs.
-        gen_texts = []
-        for output in outputs:
-            prompt = output.prompt
-            generated_text = output.outputs[0].text
-            gen_texts.append(generated_text)
-
-        return gen_texts
+        prv_value = ""
+        value = ""
+        while True:
+            prv_value = value
+            try:
+                value = loop.run_until_complete(gen.__anext__())
+                yield value[len(prv_value) :]
+            except StopAsyncIteration:
+                break
