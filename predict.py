@@ -110,12 +110,16 @@
 
 
 # class Predictor(BasePredictor):
-#     async def setup(self):
+#     async def setup(self, weights: str = ""):
 #         n_gpus = torch.cuda.device_count()
 #         start = time.time()
+
+#         model_id = os.getenv("MODEL_ID")
+
 #         await maybe_download_with_pget(
-#             MODEL_ID, WEIGHTS_URL, REMOTE_FILES
+#             model_id, weights, REMOTE_FILES
 #         )
+
 #         print(f"downloading weights took {time.time() - start:.3f}s")
 #         self.llm = VLLMPipeline(
 #             tensor_parallel_size=n_gpus,
@@ -190,8 +194,21 @@
 # if __name__ == "__main__":
 #     asyncio.run(main())
 
-class Predictor():
+from cog import ConcatenateIterator, Input, BasePredictor
+
+class Predictor(BasePredictor):
+
     def setup(self):
         pass
-    def predict(self) -> str:
-        return 'hi'
+    def predict(
+        self, 
+        prompt: str = Input(
+            description="The prompt to generate text from."
+        ),
+        temperature: float = Input(
+            description="The value used to modulate the next token probabilities.",
+            default=0.6
+        ),
+
+        ) -> str:
+        return prompt
