@@ -2,12 +2,12 @@ import os, random, asyncio, time
 os.environ["CUDA_HOME"] = "/usr/local/cuda"
 from typing import AsyncIterator, List, Union
 from cog import BasePredictor, Input, ConcatenateIterator
-from vllm import AsyncLLMEngine
-from vllm.engine.arg_utils import AsyncEngineArgs
-from vllm.sampling_params import SamplingParams
-import torch
-from utils import maybe_download_with_pget
 
+# from vllm import AsyncLLMEngine
+# from vllm.engine.arg_utils import AsyncEngineArgs
+# from vllm.sampling_params import SamplingParams
+
+from utils import maybe_download_with_pget
 # from dotenv import load_dotenv
 
 # load_dotenv()
@@ -45,9 +45,15 @@ class VLLMPipeline:
             if hasattr(self.engine.engine.tokenizer, "tokenizer")
             else self.engine.engine.tokenizer
         )
+        from vllm import AsyncLLMEngine
+        from vllm.engine.arg_utils import AsyncEngineArgs
+        from vllm.sampling_params import SamplingParams
+        globals()["AsyncLLMEngine"] = AsyncLLMEngine
+        globals()["AsyncEngineArgs"] = AsyncEngineArgs
+        globals()["SamplingParams"] = SamplingParams
 
     async def generate_stream(
-        self, prompt: str, sampling_params: SamplingParams
+        self, prompt: str, sampling_params: "SamplingParams"
     ) -> AsyncIterator[str]:
         results_generator = self.engine.generate(
             prompt, sampling_params, str(random.random())
@@ -113,6 +119,8 @@ class VLLMPipeline:
 
 class Predictor(BasePredictor):
     async def setup(self, weights: str = ""):
+        import torch
+
         n_gpus = torch.cuda.device_count()
         start = time.time()
 
