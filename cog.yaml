@@ -10,20 +10,23 @@ build:
   python_version: "3.10"
 
   # a list of packages in the format <package-name>==<version>
+  system_packages:
+    - pget
   python_packages:
-    # - "git+https://github.com/microsoft/DeepSpeed.git"
+    - "git+https://github.com/microsoft/DeepSpeed.git"
+    -  "git+https://github.com/joehoover/vllm.git@joe/yak-staging-pydantic-v1"
     # - "git+https://github.com/Snowflake-Labs/vllm.git@yak-staging"
-    # - "git+https://github.com/Snowflake-Labs/transformers.git@yak-staging"
+    - "git+https://github.com/Snowflake-Labs/transformers.git@yak-staging"
     - dotenv
   # commands run after the environment is setup
-  run:
-    - --mount=type=cache,target=/root/.cache/pip TORCH_CUDA_ARCH_LIST="9.0" pip install git+https://github.com/microsoft/DeepSpeed.git
-    #- --mount=type=cache,target=/root/.cache/pip TORCH_CUDA_ARCH_LIST="9.0" pip install git+https://github.com/Snowflake-Labs/vllm.git@yak-staging
-    - --mount=type=cache,target=/root/.cache/pip TORCH_CUDA_ARCH_LIST="9.0" pip install git+https://github.com/joehoover/vllm.git@yak-staging-pydantic
-    - --mount=type=cache,target=/root/.cache/pip TORCH_CUDA_ARCH_LIST="9.0" pip install git+https://github.com/Snowflake-Labs/transformers.git@yak-staging
-    - --mount=type=cache,target=/root/.cache/pip pip install https://r2.drysys.workers.dev/tmp/cog-0.10.0a6-py3-none-any.whl
-    - curl -o /usr/local/bin/pget -L "https://github.com/replicate/pget/releases/download/v0.5.4/pget_linux_x86_64" && chmod +x /usr/local/bin/pget
-    # - pip install scipy==1.11.4 sentencepiece==0.1.99 protobuf==4.23.4 python-dotenv
-    - ln -sf $(which echo) $(which pip)
+  # run:
+  #   - --mount=type=cache,target=/root/.cache/pip TORCH_CUDA_ARCH_LIST="9.0" pip install git+https://github.com/microsoft/DeepSpeed.git
+  #   # - --mount=type=cache,target=/root/.cache/pip TORCH_CUDA_ARCH_LIST="9.0" pip install git+https://github.com/Snowflake-Labs/vllm.git@yak-staging
+  #   - --mount=type=cache,target=/root/.cache/pip TORCH_CUDA_ARCH_LIST="9.0" pip install git+https://github.com/joehoover/vllm.git@yak-staging-pydantic
+  #   - --mount=type=cache,target=/root/.cache/pip TORCH_CUDA_ARCH_LIST="9.0" pip install git+https://github.com/Snowflake-Labs/transformers.git@yak-staging
+  #   - --mount=type=cache,target=/root/.cache/pip pip install https://r2.drysys.workers.dev/tmp/cog-0.10.0a6-py3-none-any.whl
+  #   - curl -o /usr/local/bin/pget -L "https://github.com/replicate/pget/releases/download/v0.5.4/pget_linux_x86_64" && chmod +x /usr/local/bin/pget
+  #   # - pip install scipy==1.11.4 sentencepiece==0.1.99 protobuf==4.23.4 python-dotenv
+  #   - ln -sf $(which echo) $(which pip)
 predict: "predict.py:Predictor"
 concurrency: 32
