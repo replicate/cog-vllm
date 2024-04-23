@@ -7,9 +7,9 @@ from vllm.sampling_params import SamplingParams
 import torch
 from utils import maybe_download_with_pget
 
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 
-load_dotenv()
+# load_dotenv()
 
 MODEL_ID = os.getenv("MODEL_ID")
 WEIGHTS_URL = os.getenv("COG_WEIGHTS")
