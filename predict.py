@@ -1,4 +1,5 @@
 import os, random, asyncio, time
+os.environ["CUDA_HOME"] = "/usr/local/cuda"
 from typing import AsyncIterator, List, Union
 from cog import BasePredictor, Input, ConcatenateIterator
 from vllm import AsyncLLMEngine
