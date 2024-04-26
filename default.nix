@@ -24,7 +24,7 @@ in
     deepspeed.env.HOME = "/tmp";
     # https://github.com/vllm-project/vllm/issues/4201
     torch.mkDerivation.postInstall = ''
-      sed -i 's|caster.operator typename make_caster<T>::template cast_op_type<T>();|caster;|g' $out/lib/python3.10/site-packages/torch/include/pybind11/cast.h
+      sed -i 's|caster.operator typename make_caster<T>::template cast_op_type<T>();|caster;|g' $out/${config.python-env.deps.python.sitePackages}/torch/include/pybind11/cast.h
     '';
     vllm = {
       env.CUDA_HOME = "${cudaPackages.cuda_nvcc.bin}";
