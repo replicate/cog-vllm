@@ -12,8 +12,11 @@ build:
   # a list of packages in the format <package-name>==<version>
   python_packages:
     - git+https://github.com/microsoft/DeepSpeed.git
-    - git+https://github.com/Snowflake-Labs/vllm.git@yak-staging
+    - git+https://github.com/joehoover/vllm.git@joe/yak-staging-pydantic-v1
     - git+https://github.com/Snowflake-Labs/transformers.git@yak-staging
+
+  system_packages:
+    - pget
 
 predict: "predict.py:Predictor"
 concurrency: 32

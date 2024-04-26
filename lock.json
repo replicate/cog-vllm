@@ -37,12 +37,6 @@
         "url": "https://files.pythonhosted.org/packages/00/2e/d53fa4befbf2cfa713304affc7ca780ce4fc1fd8710527771b58311a3229/click-8.1.7-py3-none-any.whl",
         "version": "8.1.7"
       },
-      "cloudpickle": {
-        "sha256": "246ee7d0c295602a036e86369c77fecda4ab17b506496730f2f576d9016fd9c7",
-        "type": "url",
-        "url": "https://files.pythonhosted.org/packages/96/43/dae06432d0c4b1dc9e9149ad37b4ca8384cf6eb7700cd9215b177b914f0a/cloudpickle-3.0.0-py3-none-any.whl",
-        "version": "3.0.0"
-      },
       "cmake": {
         "sha256": "f9e941e73202cfa667ee488d1d88b8a758b516dcfa2a2728e73dbdcbfbdebf57",
         "type": "url",
@@ -61,12 +55,6 @@
         "url": "https://github.com/microsoft/DeepSpeed.git",
         "version": "4c15ad9f",
         "rev": "4c15ad9f8d51a1950842c69bbbc9d93c73afbcfc"
-      },
-      "diskcache": {
-        "sha256": "5e31b2d5fbad117cc363ebaf6b689474db18a1f6438bc82358b024abd4c2ca19",
-        "type": "url",
-        "url": "https://files.pythonhosted.org/packages/3f/27/4570e78fc0bf5ea0ca45eb1de3818a23787af9b390c0b0a0033a1b8236f9/diskcache-5.6.3-py3-none-any.whl",
-        "version": "5.6.3"
       },
       "fastapi": {
         "sha256": "f4165fb1fe3610c52cb1b8282c1480de9c34bc270f56a965aa93a884c350d605",
@@ -164,12 +152,6 @@
         "url": "https://files.pythonhosted.org/packages/30/6d/6de6be2d02603ab56e72997708809e8a5b0fbfee080735109b40a3564843/Jinja2-3.1.3-py3-none-any.whl",
         "version": "3.1.3"
       },
-      "joblib": {
-        "sha256": "42942470d4062537be4d54c83511186da1fc14ba354961a2114da91efa9a4ed7",
-        "type": "url",
-        "url": "https://files.pythonhosted.org/packages/ae/e2/4dea6313ef2b38442fccbbaf4017e50a6c3c8a50e8ee9b512783e5c90409/joblib-1.4.0-py3-none-any.whl",
-        "version": "1.4.0"
-      },
       "jsonschema": {
         "sha256": "7996507afae316306f9e2290407761157c6f78002dcf7419acb99822143d1c6f",
         "type": "url",
@@ -181,18 +163,6 @@
         "type": "url",
         "url": "https://files.pythonhosted.org/packages/ee/07/44bd408781594c4d0a027666ef27fab1e441b109dc3b76b4f836f8fd04fe/jsonschema_specifications-2023.12.1-py3-none-any.whl",
         "version": "2023.12.1"
-      },
-      "lark": {
-        "sha256": "a0dd3a87289f8ccbb325901e4222e723e7d745dbfc1803eaf5f3d2ace19cf2db",
-        "type": "url",
-        "url": "https://files.pythonhosted.org/packages/e7/9c/eef7c591e6dc952f3636cfe0df712c0f9916cedf317810a3bb53ccb65cdd/lark-1.1.9-py3-none-any.whl",
-        "version": "1.1.9"
-      },
-      "llvmlite": {
-        "sha256": "c5bece0cdf77f22379f19b1959ccd7aee518afa4afbd3656c6365865f84903f9",
-        "type": "url",
-        "url": "https://files.pythonhosted.org/packages/a4/1f/300788b5eab99aec872ed2f3647386d7d7f7bbf4f99c91e9e023b404ff7f/llvmlite-0.42.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
-        "version": "0.42.0"
       },
       "lm-format-enforcer": {
         "sha256": "6627f712330d61c1a646b0df3797baf8f83ae52775c9ef5e9e5174fedc390112",
@@ -218,12 +188,6 @@
         "url": "https://files.pythonhosted.org/packages/f6/f0/a7bdb48223cd21b9abed814b08fca8fe6a40931e70ec97c24d2f15d68ef3/msgpack-1.0.8-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
         "version": "1.0.8"
       },
-      "nest-asyncio": {
-        "sha256": "87af6efd6b5e897c81050477ef65c62e2b2f35d51703cae01aff2905b1852e1c",
-        "type": "url",
-        "url": "https://files.pythonhosted.org/packages/a0/c4/c2971a3ba4c6103a3d10c4b0f24f461ddc027f0f09763220cf35ca1401b3/nest_asyncio-1.6.0-py3-none-any.whl",
-        "version": "1.6.0"
-      },
       "networkx": {
         "sha256": "28575580c6ebdaf4505b22c6256a2b9de86b316dc63ba9e93abde3d78dfdbcf2",
         "type": "url",
@@ -235,12 +199,6 @@
         "type": "url",
         "url": "https://files.pythonhosted.org/packages/6d/92/8d7aebd4430ab5ff65df2bfee6d5745f95c004284db2d8ca76dcbfd9de47/ninja-1.11.1.1-py2.py3-none-manylinux1_x86_64.manylinux_2_5_x86_64.whl",
         "version": "1.11.1.1"
-      },
-      "numba": {
-        "sha256": "dd2842fac03be4e5324ebbbd4d2d0c8c0fc6e0df75c09477dd45b288a0777389",
-        "type": "url",
-        "url": "https://files.pythonhosted.org/packages/54/f2/7d1579037643c874fa73516ea84c07e8d30ea347fb1a88c03b198447655d/numba-0.59.1-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
-        "version": "0.59.1"
       },
       "numpy": {
         "sha256": "666dbfb6ec68962c033a450943ded891bed2d54e6755e35e5835d63f4f6931d5",
@@ -320,12 +278,6 @@
         "url": "https://files.pythonhosted.org/packages/da/d3/8057f0587683ed2fcd4dbfbdfdfa807b9160b809976099d36b8f60d08f03/nvidia_nvtx_cu12-12.1.105-py3-none-manylinux1_x86_64.whl",
         "version": "12.1.105"
       },
-      "outlines": {
-        "sha256": "911588a7e64a4f193b97fb4c501d98ccfd4e95a98f6a3ada67a280bf0c373c50",
-        "type": "url",
-        "url": "https://files.pythonhosted.org/packages/58/fb/639f67a1a0288736dcdbc5a4fb1c822fcbc02c9fa79d1bca02056c653e76/outlines-0.0.34-py3-none-any.whl",
-        "version": "0.0.34"
-      },
       "packaging": {
         "sha256": "2ddfb553fdf02fb784c234c7ba6ccc288296ceabec964ad2eae3777778130bc5",
         "type": "url",
@@ -357,10 +309,10 @@
         "version": "9.0.0"
       },
       "pydantic": {
-        "sha256": "07293ab08e7b4d3c9d7de4949a0ea571f11e4557d19ea24dd3ae0c524c0c334d",
+        "sha256": "3287e1614393119c67bd4404f46e33ae3be3ed4cd10360b48d0a4459f420c6a3",
         "type": "url",
-        "url": "https://files.pythonhosted.org/packages/ce/80/92bdb68e1fda29be502adfd0b95c4cdef41f498a35125d0d540d4696c091/pydantic-1.10.9-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
-        "version": "1.10.9"
+        "url": "https://files.pythonhosted.org/packages/28/67/359f77395bedd707fbbd29dba5725d412b436250dfb14c2261adbd59d256/pydantic-1.10.15-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+        "version": "1.10.15"
       },
       "pynvml": {
         "sha256": "5cce014ac01b098d08f06178f86c37be409b80b2e903a5a03ce15eed60f55e25",
@@ -415,12 +367,6 @@
         "type": "url",
         "url": "https://files.pythonhosted.org/packages/d5/85/1e7d2804cbf82204cde462d16f1cb0ff5814b03f559fb46ceaa6b7020db4/safetensors-0.4.3-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
         "version": "0.4.3"
-      },
-      "scipy": {
-        "sha256": "9ff7dad5d24a8045d836671e082a490848e8639cabb3dbdacb29f943a678683d",
-        "type": "url",
-        "url": "https://files.pythonhosted.org/packages/e8/fb/e5955e2ddbdf2baee461eb53ec8d0adedd20a6dfc5510ef8d5e7e44ba461/scipy-1.13.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
-        "version": "1.13.0"
       },
       "sentencepiece": {
         "sha256": "e58b47f933aca74c6a60a79dcb21d5b9e47416256c795c2d58d55cec27f9551d",
@@ -516,9 +462,9 @@
       "vllm": {
         "sha256": null,
         "type": "git",
-        "url": "https://github.com/Snowflake-Labs/vllm.git",
-        "version": "30b0a1a7",
-        "rev": "30b0a1a71b12f7ba7ed5483991fce25b8c1abb72"
+        "url": "https://github.com/joehoover/vllm.git",
+        "version": "925765af",
+        "rev": "925765afd42851b34c5d6ed262a718bc8b7549b9"
       },
       "vllm-nccl-cu12": {
         "sha256": "d56535da1b893ac49c1f40be9245f999e543c3fc95b4839642b70dd1d72760c0",
@@ -558,7 +504,6 @@
         "certifi": [],
         "charset-normalizer": [],
         "click": [],
-        "cloudpickle": [],
         "cmake": [],
         "cog": [
           "attrs",
@@ -583,7 +528,6 @@
           "torch",
           "tqdm"
         ],
-        "diskcache": [],
         "fastapi": [
           "pydantic",
           "starlette"
@@ -626,7 +570,6 @@
         "jinja2": [
           "markupsafe"
         ],
-        "joblib": [],
         "jsonschema": [
           "attrs",
           "jsonschema-specifications",
@@ -636,8 +579,6 @@
         "jsonschema-specifications": [
           "referencing"
         ],
-        "lark": [],
-        "llvmlite": [],
         "lm-format-enforcer": [
           "interegular",
           "packaging",
@@ -647,13 +588,8 @@
         "markupsafe": [],
         "mpmath": [],
         "msgpack": [],
-        "nest-asyncio": [],
         "networkx": [],
         "ninja": [],
-        "numba": [
-          "llvmlite",
-          "numpy"
-        ],
         "numpy": [],
         "nvidia-cublas-cu12": [],
         "nvidia-cuda-cupti-cu12": [],
@@ -675,24 +611,6 @@
         "nvidia-nccl-cu12": [],
         "nvidia-nvjitlink-cu12": [],
         "nvidia-nvtx-cu12": [],
-        "outlines": [
-          "cloudpickle",
-          "diskcache",
-          "interegular",
-          "jinja2",
-          "joblib",
-          "jsonschema",
-          "lark",
-          "nest-asyncio",
-          "numba",
-          "numpy",
-          "pydantic",
-          "referencing",
-          "requests",
-          "scipy",
-          "torch",
-          "transformers"
-        ],
         "packaging": [],
         "prometheus-client": [],
         "protobuf": [],
@@ -713,7 +631,6 @@
           "msgpack",
           "packaging",
           "protobuf",
-          "pydantic",
           "pyyaml",
           "requests"
         ],
@@ -730,9 +647,6 @@
         ],
         "rpds-py": [],
         "safetensors": [],
-        "scipy": [
-          "numpy"
-        ],
         "sentencepiece": [],
         "sniffio": [],
         "starlette": [
@@ -775,7 +689,6 @@
           "huggingface-hub",
           "numpy",
           "packaging",
-          "pydantic",
           "pyyaml",
           "regex",
           "requests",
@@ -806,7 +719,6 @@
           "lm-format-enforcer",
           "ninja",
           "numpy",
-          "outlines",
           "prometheus-client",
           "psutil",
           "py-cpuinfo",
@@ -835,5 +747,5 @@
       }
     }
   },
-  "invalidationHash": "61f3c95c4ad1b830a6507d3c9244e81a82fce608f1d167e7ec8339535a935509"
+  "invalidationHash": "77cccc96adfe094524462945d350824a8ee708ae0f8c497461a3ee870df1e3e1"
 }

@@ -6,7 +6,6 @@ in
   # todo: give this a place in cog.yaml
   python-env.pip.overrides = [
     "cog @ http://r2.drysys.workers.dev/tmp/cog-0.10.0a6-py3-none-any.whl"
-    "pydantic==1.10.9"
   ];
   python-env.pip.uv.enable = true;
   # workaround setup.py looking for cuda, doing native imports
@@ -20,7 +19,6 @@ in
   }: builtins.fetchGit { inherit url rev; allRefs = true; };
 
   python-env.pip.drvs = {
-    numba.env.autoPatchelfIgnoreMissingDeps = [ "libtbb.so.12" ];
     deepspeed.env.HOME = "/tmp";
     # https://github.com/vllm-project/vllm/issues/4201
     torch.mkDerivation.postInstall = ''
