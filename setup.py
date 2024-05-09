@@ -57,16 +57,6 @@ def main(model_id, cog_weights, tag_name):
     # Install COG
     cog_url = f"https://github.com/replicate/cog/releases/download/v0.10.0-alpha5/cog_{platform.system().lower()}_{platform.machine().lower()}"
     subprocess.run(["sudo", "curl", "-o", "/usr/local/bin/cog", "-L", cog_url])
-    subprocess.run(
-        [
-            "sudo",
-            "curl",
-            "-o",
-            "/usr/local/bin/cog",
-            "-L",
-            "https://github.com/replicate/cog/releases/download/v0.10.0-alpha5/cog_$(uname -s)_$(uname -m)",
-        ]
-    )
     subprocess.run(["sudo", "chmod", "+x", "/usr/local/bin/cog"])
 
     # Build with COG using the specified tag name

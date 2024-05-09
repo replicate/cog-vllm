@@ -1,6 +1,7 @@
 import asyncio
 import os
 import typing as tp
+import subprocess
 
 
 def check_files_exist(remote_files: list[str], local_path: str) -> list[str]:
@@ -12,26 +13,23 @@ def check_files_exist(remote_files: list[str], local_path: str) -> list[str]:
 async def download_files_with_pget(
     remote_path: str, path: str, files: list[str]
 ) -> None:
-    import pdb
 
-    pdb.set_trace()
     # get all the files that are not .tars
     download_jobs = "\n".join(
         f"{remote_path}/{f} {path}/{f}" for f in files if not f.endswith(".tar")
     )
-    # seperate jobs for files that end with .tar
-    tar_download_jobs = [
-        f"{remote_path}/{f}.tar ./{path}/{f}" for f in files if f.endswith(".tar")
-    ]
     args = ["pget", "multifile", "-", "-f", "--max-conn-per-host", "100"]
     process = await asyncio.create_subprocess_exec(*args, stdin=-1, close_fds=True)
     # Wait for the subprocess to finish
     await process.communicate(download_jobs.encode())
     # download tars
-    for tar_job in tar_download_jobs:
-        # run pget -x -f remote_path/f.tar path/f
-        args = ["pget", "-x", "-f", tar_job]
-        process = await asyncio.create_subprocess_exec(*args, close_fds=True)
+    # separate jobs for files that end with .tar
+    tar_files = [f for f in files if f.endswith(".tar")]
+    for tar_file in tar_files:
+        # run pget -f remote_path/f.tar -x path/f
+        subprocess.run(
+            ["pget", "-f", f"{remote_path}/{tar_file}", "-x", f"{tar_file[:-4]}"]
+        )
 
 
 async def maybe_download_with_pget(

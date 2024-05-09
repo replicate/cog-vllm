@@ -14,12 +14,7 @@ load_dotenv()
 MODEL_ID = os.getenv("MODEL_ID")
 WEIGHTS_URL = os.getenv("COG_WEIGHTS")
 REMOTE_FILES = [
-    "config.json",
-    "model.safetensors",
-    "special_tokens_map.json",
-    "tokenizer.json",
-    "tokenizer.model",
-    "tokenizer_config.json",
+    "mixtral_8x7b_base_krai.tar",
 ]
 PROMPT_TEMPLATE = "<s>[INST] {prompt} [/INST] "
 
