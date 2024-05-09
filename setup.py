@@ -2,6 +2,7 @@
 import os
 import subprocess
 import click
+import platform
 
 def update_env_file(model_id, cog_weights):
     env_file = '.env'
@@ -27,7 +28,6 @@ def update_env_file(model_id, cog_weights):
     with open(env_file, 'w') as file:
         file.writelines(updated_lines)
 
-# Function to display help
 @click.command()
 @click.option('-m', '--model-id', default=None, help='Specify the model ID to use (e.g., mistralai/Mistral-7B-Instruct-v0.2)')
 @click.option('-w', '--cog-weights', default=None, help='Specify the URL for the COG weights (e.g., https://weights.replicate.delivery/default/mistral-7b-instruct-v0.2)')
@@ -38,6 +38,8 @@ def main(model_id, cog_weights, tag_name):
         os.system("touch .env")
     update_env_file(model_id, cog_weights)
     # Install COG
+    cog_url = f"https://github.com/replicate/cog/releases/download/v0.10.0-alpha5/cog_{platform.system().lower()}_{platform.machine().lower()}"
+    subprocess.run(["sudo", "curl", "-o", "/usr/local/bin/cog", "-L", cog_url])
     subprocess.run(["sudo", "curl", "-o", "/usr/local/bin/cog", "-L", "https://github.com/replicate/cog/releases/download/v0.10.0-alpha5/cog_$(uname -s)_$(uname -m)"])
     subprocess.run(["sudo", "chmod", "+x", "/usr/local/bin/cog"])
 

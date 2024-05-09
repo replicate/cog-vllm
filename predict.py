@@ -113,6 +113,7 @@ class Predictor(BasePredictor):
     async def setup(self):
         n_gpus = torch.cuda.device_count()
         start = time.time()
+        import pdb; pdb.set_trace()
         await maybe_download_with_pget(
             MODEL_ID, WEIGHTS_URL, REMOTE_FILES
         )
