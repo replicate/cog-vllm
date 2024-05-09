@@ -26,10 +26,9 @@ async def download_files_with_pget(
     # separate jobs for files that end with .tar
     tar_files = [f for f in files if f.endswith(".tar")]
     for tar_file in tar_files:
-        # run pget -f remote_path/f.tar -x path/f
-        subprocess.run(
-            ["pget", "-f", f"{remote_path}/{tar_file}", "-x", f"{tar_file[:-4]}"]
-        )
+        # path is MODEL_ID so
+        # run pget -f remote_path/f.tar -x path
+        subprocess.run(["pget", "-f", f"{remote_path}/{tar_file}", "-x", f"./{path}"])
 
 
 async def maybe_download_with_pget(
