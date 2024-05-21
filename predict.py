@@ -8,17 +8,13 @@ import torch
 from utils import maybe_download_with_pget
 
 from dotenv import load_dotenv
+
 load_dotenv()
 
 MODEL_ID = os.getenv("MODEL_ID")
 WEIGHTS_URL = os.getenv("COG_WEIGHTS")
 REMOTE_FILES = [
-    "config.json",
-    "model.safetensors",
-    "special_tokens_map.json",
-    "tokenizer.json",
-    "tokenizer.model",
-    "tokenizer_config.json"
+    "model.tar",
 ]
 PROMPT_TEMPLATE = "<s>[INST] {prompt} [/INST] "
 
@@ -39,8 +35,8 @@ class VLLMPipeline:
         args = AsyncEngineArgs(*args, **kwargs)
         self.engine = AsyncLLMEngine.from_engine_args(args)
         self.tokenizer = (
-            self.engine.engine.tokenizer.tokenizer 
-            if hasattr(self.engine.engine.tokenizer, "tokenizer") 
+            self.engine.engine.tokenizer.tokenizer
+            if hasattr(self.engine.engine.tokenizer, "tokenizer")
             else self.engine.engine.tokenizer
         )
 
@@ -49,7 +45,7 @@ class VLLMPipeline:
     ) -> AsyncIterator[str]:
         results_generator = self.engine.generate(
             prompt, sampling_params, str(random.random())
-            )
+        )
         async for generated_text in results_generator:
             yield generated_text
 
@@ -113,16 +109,14 @@ class Predictor(BasePredictor):
     async def setup(self):
         n_gpus = torch.cuda.device_count()
         start = time.time()
-        await maybe_download_with_pget(
-            MODEL_ID, WEIGHTS_URL, REMOTE_FILES
-        )
+        await maybe_download_with_pget(MODEL_ID, WEIGHTS_URL, REMOTE_FILES)
         print(f"downloading weights took {time.time() - start:.3f}s")
         self.llm = VLLMPipeline(
             tensor_parallel_size=n_gpus,
             model=MODEL_ID,
             # quantization="awq",
             dtype="auto",
-            trust_remote_code=True
+            trust_remote_code=True,
             # max_model_len=MAX_TOKENS
         )
 
@@ -134,7 +128,8 @@ class Predictor(BasePredictor):
             default=DEFAULT_MAX_NEW_TOKENS,
         ),
         temperature: float = Input(
-            description="The value used to modulate the next token probabilities.", default=DEFAULT_TEMPERATURE
+            description="The value used to modulate the next token probabilities.",
+            default=DEFAULT_TEMPERATURE,
         ),
         top_p: float = Input(
             description="A probability threshold for generating the output. If < 1.0, only keep the top tokens with cumulative probability >= top_p (nucleus filtering). Nucleus filtering is described in Holtzman et al. (http://arxiv.org/abs/1904.09751).",
@@ -155,7 +150,7 @@ class Predictor(BasePredictor):
         prompt_template: str = Input(
             description="The template used to format the prompt. The input prompt is inserted into the template using the `{prompt}` placeholder.",
             default=PROMPT_TEMPLATE,
-        )
+        ),
     ) -> ConcatenateIterator[str]:
         start = time.time()
         generate = self.llm(
@@ -186,6 +181,7 @@ async def main():
         prompt_template=PROMPT_TEMPLATE,
     ):
         print(text, end="")
+
 
 if __name__ == "__main__":
     asyncio.run(main())
