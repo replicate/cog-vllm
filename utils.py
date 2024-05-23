@@ -3,6 +3,8 @@ import os
 import typing as tp
 import subprocess
 import time
+import torch
+import yaml
 
 def check_files_exist(remote_files: list[str], local_path: str) -> list[str]:
     local_files = os.listdir(local_path)
@@ -28,7 +30,7 @@ async def download_files_with_pget(
     return path
 
 
-async def maybe_download_tarball_with_pget(
+async def maybe_download_and_extract_tarball(
     tarball_url: str,
     destination_path: str,
 ):
@@ -104,3 +106,43 @@ async def maybe_download(
             
     else:
         raise NotImplementedError("Downloading from HF not implemented yet, please provide a remote path to a flat tarball containing your model artifacts.")
+
+
+def init_model_config() -> dict:
+        """
+        Initializes the model configuration.
+
+        This function loads the model configuration from a YAML file named "config.yaml".
+        If the file doesn't exist, it checks for environment variables `MODEL_ID` and `MODEL_URL`.
+        If either of these variables is not set, it raises a ValueError.
+        The function also sets the `dtype` and `tensor_parallel_size` based on environment variables.
+        The default value for `dtype` is "auto" and the default value for `tensor_parallel_size` is `self.world_size`.
+
+        Returns:
+            dict: The model configuration dictionary.
+        """
+        if os.path.exists("config.yaml"):
+            with open("config.yaml", "r") as f:
+                config = yaml.safe_load(f)
+            return config
+
+        else: # Try to build the config from environment variables
+            model_id = os.getenv("MODEL_ID", None)
+            model_url = os.getenv("COG_WEIGHTS", None)
+
+            if not model_id:
+                raise ValueError("No config was provided and `MODEL_ID` is not set.")
+            if not model_url:
+                raise ValueError("No config was provided and `MODEL_URL` is not set.")
+            
+            world_size = torch.cuda.device_count()
+            tensor_parallel_size = os.getenv("TENSOR_PARALLEL_SIZE", world_size)
+
+            config = {
+                "model_id": MODEL_ID,
+                "model_url": os.getenv("MODEL_URL", WEIGHTS_URL),
+                "dtype": os.getenv("DTYPE", "auto"),
+                "tensor_parallel_size": tensor_parallel_size,
+            }
+        
+        return config
