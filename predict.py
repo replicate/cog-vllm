@@ -22,7 +22,7 @@ if not DEFAULT_PROMPT_TEMPLATE or DEFAULT_PROMPT_TEMPLATE == "":
 
 
 class Predictor(BasePredictor):
-    async def setup(self, weights: str = ""):
+    async def setup(self):
         
         self.world_size = torch.cuda.device_count()
         self.config = init_model_config()
@@ -121,6 +121,9 @@ class Predictor(BasePredictor):
 
     def get_engine_args(self) -> AsyncEngineArgs:
         engine_args = self.config.get("engine_args", {})
+        if not engine_args:
+            engine_args = {}
+            
         engine_args["model"] = self.model_path
 
         if "dtype" not in engine_args:
