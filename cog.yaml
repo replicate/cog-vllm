@@ -18,13 +18,14 @@ build:
     - "aiohttp[speedups]"
   # commands run after the environment is setup
   run:
-    - pip install https://r2.drysys.workers.dev/tmp/cog-0.10.0a6-py3-none-any.whl
+    - pip install "pydantic<2.0.0"
     - CUDA_SELECT_NVCC_ARCH_FLAGS="8.0;8.6;8.9;9.0" TORCH_CUDA_ARCH_LIST="8.0;8.6;8.9;9.0" CUDA_ARCH_LIST="8.0;8.6;8.9;9.0" CUDA_HOME=/usr/local/cuda mount=type=cache,target=/root/.cache/pip pip install --ignore-installed vllm==0.4.2
-    - curl -o /usr/local/bin/pget -L "https://github.com/replicate/pget/releases/download/v0.5.4/pget_linux_x86_64" && chmod +x /usr/local/bin/pget
+    - pip install https://r2.drysys.workers.dev/tmp/cog-0.10.0a6-py3-none-any.whl
+    - curl -o /usr/local/bin/pget -L "https://github.com/replicate/pget/releases/download/v0.8.1/pget_linux_x86_64" && chmod +x /usr/local/bin/pget
     - bash -c 'ln -s /usr/local/lib/python3.11/site-packages/torch/lib/lib{nv,cu}* /usr/lib'
     - pip install scipy==1.13.0 sentencepiece==0.2.0 protobuf==5.26.1 python-dotenv==1.0.1
     - ln -sf $(which echo) $(which pip)
-    # - sed -i "s/from vllm.model_executor.layers.quantization.schema import QuantParamSchema/# from vllm.model_executor.layers.quantization.schema import QuantParamSchema/" /usr/local/lib/python3.10/dist-packages/vllm/model_executor/model_loader/weight_utils.py
+    - sed -i "s/from vllm.model_executor.layers.quantization.schema import QuantParamSchema/# from vllm.model_executor.layers.quantization.schema import QuantParamSchema/" /root/.pyenv/versions/3.11.9/lib/python3.11/site-packages/vllm/model_executor/model_loader/weight_utils.py
 
 predict: "predict.py:Predictor"
 concurrency: 32
