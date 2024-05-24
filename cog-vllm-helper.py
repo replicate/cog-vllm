@@ -7,12 +7,15 @@ import shutil
 import typing as tp
 import pprint
 
-def str_presenter(dumper, data):
-    if data.count('\n') > 0:  # Check for multiline string
-        return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='|')
-    return dumper.represent_scalar('tag:yaml.org,2002:str', data)
 
-yaml.add_representer(str, str_presenter) 
+def str_presenter(dumper, data):
+    if data.count("\n") > 0:  # Check for multiline string
+        return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data)
+
+
+yaml.add_representer(str, str_presenter)
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -115,7 +118,7 @@ def install_cog_if_needed():
             ["sudo", "curl", "-o", "/usr/local/bin/cog", "-L", cog_url], check=True
         )
         subprocess.run(["sudo", "chmod", "+x", "/usr/local/bin/cog"], check=True)
-    # else:
+        # else:
         print("Cog is already installed.")
 
 
@@ -145,7 +148,13 @@ def main(
     config = {k: v for k, v in config.items() if v is not None}
 
     with open(output, "w") as yaml_file:
-        yaml.dump(config, yaml_file, default_flow_style=False, sort_keys=False, width=float("inf"))
+        yaml.dump(
+            config,
+            yaml_file,
+            default_flow_style=False,
+            sort_keys=False,
+            width=float("inf"),
+        )
 
     install_cog_if_needed()
 

@@ -26,8 +26,6 @@ if IS_INSTRUCT and not DEFAULT_SYSTEM_PROMPT:
     DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
 
 
-
-
 class Predictor(BasePredictor):
     async def setup(self):
 
@@ -72,14 +70,8 @@ class Predictor(BasePredictor):
             description="The number of highest probability tokens to consider for generating the output. If > 0, only keep the top k tokens with highest probability (top-k filtering).",
             default=50,
         ),
-        presence_penalty: float = Input(
-            description="Presence penalty",
-            default=0.0,
-        ),
-        frequency_penalty: float = Input(
-            description="Frequency penalty",
-            default=0.0,
-        ),
+        presence_penalty: float = Input(description="Presence penalty", default=0.0),
+        frequency_penalty: float = Input(description="Frequency penalty", default=0.0),
         stop_sequences: str = Input(
             description="A comma-separated list of sequences to stop generation at. For example, '<end>,<stop>' will stop generation at the first instance of 'end' or '<stop>'.",
             default=None,
@@ -111,7 +103,6 @@ class Predictor(BasePredictor):
         else:
             prompt = prompt_template.format(prompt=prompt)
 
-
         generator = self.engine.generate(prompt, sampling_params, request_id)
         async for request_output in generator:
             assert len(request_output.outputs) == 1
@@ -123,7 +114,7 @@ class Predictor(BasePredictor):
 
             yield generated_text[generation_length:]
             generation_length = len(generated_text)
-        
+
         print(f"Generation took {time.time() - start:.2f}s")
         print(f"Formatted prompt: {prompt}")
 
