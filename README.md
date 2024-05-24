@@ -74,7 +74,6 @@ $ export REPLICATE_API_TOKEN=<your token>
 $ cog push r8.im/<your user name>/<your model name>
 --> ...
 --> Pushing image 'r8.im/...'
--->
 $ prediction_id=$(curl -s -X POST \
   -H "Authorization: Bearer $REPLICATE_API_TOKEN" \
   -H "Content-Type: application/json" \
@@ -90,8 +89,6 @@ $ curl -s \
   -H "Authorization: Bearer $REPLICATE_API_TOKEN" \
   "https://api.replicate.com/v1/predictions/${prediction_id}"
 ```
-
-
 
 # How it works
 
@@ -176,35 +173,33 @@ $ docker run -d -p 5000:5000 --gpus all cog-vllm
 
 $ curl http://localhost:5000/predictions -X POST \
     -H 'Content-Type: application/json' \
-    -d '{"input": {"image": "https://.../input.jpg"}}'
+    -d '{"input": {"prompt": "Hello!"}}'
 ```
 
-# Push to replicate
+### Push to replicate
 
-```bash
-cog login
-cog push <replicate destination> # r8.im/hamelsmu/test-mistral-7b-instruct-v0.2
+
+```console
+$ cog login
+$ export REPLICATE_API_TOKEN=<your token>
+$ cog push r8.im/<your user name>/<your model name>
+--> ...
+--> Pushing image 'r8.im/...'
 ```
 
+# Debug and develop in a cog-vllm container
 
-# Debug The Container
-
-```bash
-cog run -e CUDA_VISIBLE_DEVICES=0 -p 5000 /bin/bash
-# in the container run this for debugging
-python predict.py
+```console
+$ cog run -p 5000 /bin/bash
+--> Running '/bin/bash' in Docker with the current directory mounted as a volume...
+$ python -m cog.server.http
 ```
 
-or run `cog predict`:
+Then, in a different terminal session, you can make a request against your local server:
 
-```bash
-cog predict -e CUDA_VISIBLE_DEVICES=0 \
-           -i prompt="Write a blogpost about SEO directed at a technical audience" \
-           -i max_new_tokens=512 \
-           -i temperature=0.6 \
-           -i top_p=0.9 \
-           -i top_k=50 \
-           -i presence_penalty=0.0 \
-           -i frequency_penalty=0.0 \
-           -i prompt_template="<s>[INST] {prompt} [/INST] "
+```console
+$ curl http://localhost:5000/predictions -X POST \
+    -H 'Content-Type: application/json' \
+    -d '{"input": {"prompt": "Hello!"}}'
 ```
+
