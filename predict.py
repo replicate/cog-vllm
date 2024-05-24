@@ -30,13 +30,13 @@ if IS_INSTRUCT and not DEFAULT_SYSTEM_PROMPT:
 
 class Predictor(BasePredictor):
     async def setup(self):
-        
+
         self.world_size = torch.cuda.device_count()
         self.config = init_model_config()
         self.model_path = os.path.join("models", self.config["model_id"])
         self.engine_args = self.get_engine_args()
-        
-        await self.maybe_download_model()
+
+        await maybe_download(self.model_path, self.config["model_url"])
 
         self.engine = AsyncLLMEngine.from_engine_args(self.engine_args)
         self.tokenizer = (
@@ -44,7 +44,6 @@ class Predictor(BasePredictor):
             if hasattr(self.engine.engine.tokenizer, "tokenizer")
             else self.engine.engine.tokenizer
         )
-
 
     async def predict(
         self,
@@ -118,7 +117,7 @@ class Predictor(BasePredictor):
             assert len(request_output.outputs) == 1
 
             generated_text = request_output.outputs[0].text
-            
+
             # Catches partial emojis, waits for them to finish
             generated_text = generated_text.replace("\N{REPLACEMENT CHARACTER}", "")
 
@@ -128,45 +127,34 @@ class Predictor(BasePredictor):
         print(f"Generation took {time.time() - start:.2f}s")
         print(f"Formatted prompt: {prompt}")
 
-    
-    async def maybe_download_model(self) -> str:
-        if not os.path.exists(f"models/"):
-            os.makedirs(f"models/")
-
-        path = self.model_path
-        model_url = self.config["model_url"]
-
-        await maybe_download(path=path, remote_path=model_url)
-        return path
-
     def get_engine_args(self) -> AsyncEngineArgs:
         engine_args = self.config.get("engine_args", {})
         if not engine_args:
             engine_args = {}
-            
+
         engine_args["model"] = self.model_path
 
         if "dtype" not in engine_args:
             engine_args["dtype"] = "auto"
-        
+
         if "tensor_parallel_size" not in engine_args:
             engine_args["tensor_parallel_size"] = self.world_size
 
         if "trust_remote_code" not in engine_args:
             engine_args["trust_remote_code"] = True
-        
+
         return AsyncEngineArgs(**engine_args)
-        
+
     def get_sampling_params(self, **kwargs) -> SamplingParams:
 
         top_k = kwargs.get("top_k", None)
         if top_k is None or top_k == 0:
             top_k = -1
-        
+
         stop_token_ids = kwargs.get("stop_token_ids", None)
         stop_token_ids = stop_token_ids or []
         stop_token_ids.append(self.tokenizer.eos_token_id)
-        
+
         stop_sequences = kwargs.get("stop_sequences", None)
         if isinstance(stop_sequences, str) and stop_sequences != "":
             stop = stop_sequences.split(",")
@@ -174,7 +162,7 @@ class Predictor(BasePredictor):
             stop = stop_sequences
         else:
             stop = []
-        
+
         sampling_params = SamplingParams(
             n=1,
             stop=stop,

@@ -55,7 +55,7 @@ def main(model_id, cog_weights, tag_name):
         os.system("touch .env")
     update_env_file(model_id, cog_weights)
     # Install COG
-    cog_url = f"https://github.com/replicate/cog/releases/download/v0.10.0-alpha5/cog_{platform.system().lower()}_{platform.machine().lower()}"
+    cog_url = f"https://github.com/replicate/cog/releases/download/v0.10.0-alpha8/cog_{platform.system().lower()}_{platform.machine().lower()}"
     subprocess.run(["sudo", "curl", "-o", "/usr/local/bin/cog", "-L", cog_url])
     subprocess.run(["sudo", "chmod", "+x", "/usr/local/bin/cog"])
 
