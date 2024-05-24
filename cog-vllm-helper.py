@@ -110,12 +110,12 @@ def parse_args():
 
 def install_cog_if_needed():
     if shutil.which("cog") is None:
-        cog_url = f"https://github.com/replicate/cog/releases/download/v0.10.0-alpha8/cog_{platform.system().lower()}_{platform.machine().lower()}"
+        cog_url = f"https://github.com/replicate/cog/releases/download/v0.10.0-alpha5/cog_{platform.system().lower()}_{platform.machine().lower()}"
         subprocess.run(
             ["sudo", "curl", "-o", "/usr/local/bin/cog", "-L", cog_url], check=True
         )
         subprocess.run(["sudo", "chmod", "+x", "/usr/local/bin/cog"], check=True)
-    else:
+    # else:
         print("Cog is already installed.")
 
 
