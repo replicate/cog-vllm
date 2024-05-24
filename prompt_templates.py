@@ -1,8 +1,8 @@
 PROMPT_TEMPLATES = {
-    "completion": "{prompt}",
-    "llama-3-instruct": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a helpful assistant<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n{prompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
-    "llama-2-instruct": "[INST] <<SYS>>\n{system_prompt}\n<</SYS>>\n\n{prompt} [/INST]",
-    "mistral-instruct": "[INST] {system_prompt} {prompt} [/INST]",
+    "completion": "<s>{prompt}",
+    "llama-3-instruct": "<s><|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nYou are a helpful assistant<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n{prompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+    "llama-2-instruct": "<s>[INST] <<SYS>>\n{system_prompt}\n<</SYS>>\n\n{prompt} [/INST]",
+    "mistral-instruct": "<s>[INST] {system_prompt} {prompt} [/INST]",
 }
 
 MODELS = {

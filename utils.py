@@ -124,16 +124,17 @@ def init_model_config() -> dict:
         if os.path.exists("config.yaml"):
             with open("config.yaml", "r") as f:
                 config = yaml.safe_load(f)
-            return config
 
         else: # Try to build the config from environment variables
             model_id = os.getenv("MODEL_ID", None)
             model_url = os.getenv("COG_WEIGHTS", None)
+            is_instruct = os.getenv("IS_INSTRUCT", None)
 
             if not model_id:
                 raise ValueError("No config was provided and `MODEL_ID` is not set.")
             if not model_url:
                 raise ValueError("No config was provided and `MODEL_URL` is not set.")
+            
             
             world_size = torch.cuda.device_count()
             tensor_parallel_size = os.getenv("TENSOR_PARALLEL_SIZE", world_size)
@@ -144,5 +145,18 @@ def init_model_config() -> dict:
                 "dtype": os.getenv("DTYPE", "auto"),
                 "tensor_parallel_size": tensor_parallel_size,
             }
+
+            if is_instruct:
+                config["is_instruct"] = is_instruct
+        
+        if "is_instruct" not in config:
+            print("`is_instruct` not specified, attempting to infer from `model_id` and `model_url`.")
+            config["is_instruct"] = any(
+                keyword in config[key] 
+                for keyword in ["chat", "instruct"] 
+                for key in ["model_id", "model_url"]
+            )
+
+            print(f"`is_instruct` set to {config['is_instruct']}")
         
         return config

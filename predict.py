@@ -1,5 +1,5 @@
 import os, random, asyncio, time
-from typing import AsyncIterator, List, Union
+import typing as tp
 from cog import BasePredictor, Input, ConcatenateIterator
 from vllm import AsyncLLMEngine
 from vllm.engine.arg_utils import AsyncEngineArgs
@@ -19,6 +19,13 @@ MODEL_ID = config["model_id"].split("/")[-1]
 DEFAULT_PROMPT_TEMPLATE = config.get("prompt_template", None)
 if not DEFAULT_PROMPT_TEMPLATE or DEFAULT_PROMPT_TEMPLATE == "":
     DEFAULT_PROMPT_TEMPLATE = get_prompt_template(MODEL_ID)
+
+IS_INSTRUCT = config.get("is_instruct", True)
+DEFAULT_SYSTEM_PROMPT = config.get("system_prompt", None)
+if IS_INSTRUCT and not DEFAULT_SYSTEM_PROMPT:
+    DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
+
+
 
 
 class Predictor(BasePredictor):
@@ -42,6 +49,10 @@ class Predictor(BasePredictor):
     async def predict(
         self,
         prompt: str = Input(description="Prompt", default=""),
+        system_prompt: str = Input(
+            description="System prompt to send to the model. This is prepended to the prompt and helps guide system behavior.",
+            default=DEFAULT_SYSTEM_PROMPT,
+        ),
         min_tokens: int = Input(
             description="The minimum number of tokens the model should generate as output.",
             default=0,
@@ -96,6 +107,12 @@ class Predictor(BasePredictor):
             presence_penalty=presence_penalty,
         )
 
+        if self.config["is_instruct"]:
+            prompt = prompt_template.format(prompt=prompt, system_prompt=system_prompt)
+        else:
+            prompt = prompt_template.format(prompt=prompt)
+
+
         generator = self.engine.generate(prompt, sampling_params, request_id)
         async for request_output in generator:
             assert len(request_output.outputs) == 1
@@ -107,6 +124,9 @@ class Predictor(BasePredictor):
 
             yield generated_text[generation_length:]
             generation_length = len(generated_text)
+        
+        print(f"Generation took {time.time() - start:.2f}s")
+        print(f"Formatted prompt: {prompt}")
 
     
     async def maybe_download_model(self) -> str:
@@ -171,22 +191,27 @@ class Predictor(BasePredictor):
 
         return sampling_params
 
+    def remove(f: tp.Callable, defaults: tp.Dict[str, tp.Any]) -> tp.Callable:
+        # pylint: disable=no-self-argument
+        def wrapper(self, *args, **kwargs):
+            kwargs.update(defaults)
+            return f(self, *args, **kwargs)
 
-async def main():
-    p = Predictor()
-    await p.setup()
-    async for text in p.predict(
-        prompt="Write a blogpost about SEO directed at a technical audience",
-        max_new_tokens=512,
-        temperature=0.8,
-        top_p=0.95,
-        top_k=50,
-        presence_penalty=1.0,
-        frequency_penalty=0.2,
-        prompt_template=PROMPT_TEMPLATE,
-    ):
-        print(text, end="")
+        # Update wrapper attributes for documentation, etc.
+        functools.update_wrapper(wrapper, f)
 
+        # for the purposes of inspect.signature as used by predictor.get_input_type,
+        # remove the argument (system_prompt)
+        sig = inspect.signature(f)
+        params = [p for name, p in sig.parameters.items() if name not in defaults]
+        wrapper.__signature__ = sig.replace(parameters=params)
 
-if __name__ == "__main__":
-    asyncio.run(main())
+        # Return partialmethod, wrapper behaves correctly when part of a class
+        return functools.partialmethod(wrapper)
+
+    args_to_remove: dict[str, tp.Any] = {}
+    if not IS_INSTRUCT:
+        # this removes system_prompt from the Replicate API for non-chat models.
+        args_to_remove["system_prompt"] = None
+    if args_to_remove:
+        predict = remove(predict, args_to_remove)
