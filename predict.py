@@ -1,54 +1,59 @@
-import os, random, asyncio, time
-import typing as tp
-from cog import BasePredictor, Input, ConcatenateIterator
+import time
+import os
+from typing import Optional, Union
+from uuid import uuid4
+
+import torch
+from cog import BasePredictor, ConcatenateIterator, File, Input, Path
 from vllm import AsyncLLMEngine
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.sampling_params import SamplingParams
-import torch
 
-from uuid import uuid4
-from dotenv import load_dotenv
-import yaml
+import prompt_templates
+from utils import download_and_extract_tarball, remove_system_prompt_input
 
-from utils import maybe_download, init_model_config
-from prompt_templates import get_prompt_template
-
-config = init_model_config()
-
-MODEL_ID = config["model_id"].split("/")[-1]
-DEFAULT_PROMPT_TEMPLATE = config.get("prompt_template", None)
-if not DEFAULT_PROMPT_TEMPLATE or DEFAULT_PROMPT_TEMPLATE == "":
-    DEFAULT_PROMPT_TEMPLATE = get_prompt_template(MODEL_ID)
-
-IS_INSTRUCT = config.get("is_instruct", True)
-DEFAULT_SYSTEM_PROMPT = config.get("system_prompt", None)
-if IS_INSTRUCT and not DEFAULT_SYSTEM_PROMPT:
-    DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
+PROMPT_TEMPLATE = prompt_templates.LLAMA_3_INSTRUCT
+SYSTEM_PROMPT = "You are a helpful assistant."
 
 
 class Predictor(BasePredictor):
-    async def setup(self):
+    def setup(self, weights: Optional[Path] = None):  # pylint: disable=invalid-overridden-method
+        print("COG_WEIGHTS", os.getenv("COG_WEIGHTS"))
+        print("weights", weights)
 
-        self.world_size = torch.cuda.device_count()
-        self.config = init_model_config()
-        self.model_path = os.path.join("models", self.config["model_id"])
-        self.engine_args = self.get_engine_args()
+        if str(weights) == "weights":
+            weights = None
 
-        await maybe_download(self.model_path, self.config["model_url"])
+        if not weights:
+            raise ValueError(
+                "Weights must be provided. "
+                "Set COG_WEIGHTS environment variable to "
+                "a URL to a tarball containing the weights file "
+                "or a path to the weights file."
+            )
 
-        self.engine = AsyncLLMEngine.from_engine_args(self.engine_args)
-        self.tokenizer = (
+        # weights = await download_and_extract_tarball(str(weights))
+
+        engine_args = AsyncEngineArgs(
+            dtype="auto",
+            tensor_parallel_size=torch.cuda.device_count(),
+            trust_remote_code=True,
+            model=weights,
+        )
+
+        self.engine = AsyncLLMEngine.from_engine_args(engine_args)  # pylint: disable=attribute-defined-outside-init
+        self.tokenizer = (  # pylint: disable=attribute-defined-outside-init
             self.engine.engine.tokenizer.tokenizer
             if hasattr(self.engine.engine.tokenizer, "tokenizer")
             else self.engine.engine.tokenizer
         )
 
-    async def predict(
+    async def predict(  # pylint: disable=invalid-overridden-method, arguments-differ
         self,
         prompt: str = Input(description="Prompt", default=""),
         system_prompt: str = Input(
             description="System prompt to send to the model. This is prepended to the prompt and helps guide system behavior.",
-            default=DEFAULT_SYSTEM_PROMPT,
+            default=SYSTEM_PROMPT,
         ),
         min_tokens: int = Input(
             description="The minimum number of tokens the model should generate as output.",
@@ -78,119 +83,51 @@ class Predictor(BasePredictor):
         ),
         prompt_template: str = Input(
             description="Prompt template. The string `{prompt}` will be substituted for the input prompt. If you want to generate dialog output, use this template as a starting point and construct the prompt string manually, leaving `prompt_template={prompt}`.",
-            default=DEFAULT_PROMPT_TEMPLATE,
+            default=PROMPT_TEMPLATE,
         ),
     ) -> ConcatenateIterator[str]:
         start = time.time()
-        request_id = uuid4().hex
-        generation_length = 0
 
-        sampling_params = self.get_sampling_params(
+        prompt = prompt_template.format(prompt=prompt, system_prompt=system_prompt)
+
+        sampling_params = SamplingParams(
             n=1,
+            top_k=(-1 if (top_k or 0) == 0 else top_k),
             top_p=top_p,
-            top_k=top_k,
             temperature=temperature,
-            use_beam_search=False,
-            stop_sequences=stop_sequences,
             min_tokens=min_tokens,
             max_tokens=max_tokens,
+            stop_token_ids=[self.tokenizer.eos_token_id],
             frequency_penalty=frequency_penalty,
             presence_penalty=presence_penalty,
+            use_beam_search=False,
         )
-
-        if self.config["is_instruct"]:
-            prompt = prompt_template.format(prompt=prompt, system_prompt=system_prompt)
+        if isinstance(stop_sequences, str) and stop_sequences:
+            sampling_params.stop = stop_sequences.split(",")
         else:
-            prompt = prompt_template.format(prompt=prompt)
+            sampling_params.stop = (
+                list(stop_sequences) if isinstance(stop_sequences, list) else []
+            )
 
-        generator = self.engine.generate(prompt, sampling_params, request_id)
-        async for request_output in generator:
-            assert len(request_output.outputs) == 1
+        generator = self.engine.generate(prompt, sampling_params, uuid4().hex)
+        start = 0
 
-            generated_text = request_output.outputs[0].text
+        async for result in generator:
+            assert (
+                len(result.outputs) == 1
+            ), "Expected exactly one output from generation request."
 
-            # Catches partial emojis, waits for them to finish
-            generated_text = generated_text.replace("\N{REPLACEMENT CHARACTER}", "")
+            text = result.outputs[0].text
 
-            yield generated_text[generation_length:]
-            generation_length = len(generated_text)
+            # Normalize text by removing any incomplete surrogate pairs (common with emojis)
+            text = text.replace("\N{REPLACEMENT CHARACTER}", "")
+
+            yield text[start:]
+
+            start = len(text)
 
         print(f"Generation took {time.time() - start:.2f}s")
         print(f"Formatted prompt: {prompt}")
 
-    def get_engine_args(self) -> AsyncEngineArgs:
-        engine_args = self.config.get("engine_args", {})
-        if not engine_args:
-            engine_args = {}
-
-        engine_args["model"] = self.model_path
-
-        if "dtype" not in engine_args:
-            engine_args["dtype"] = "auto"
-
-        if "tensor_parallel_size" not in engine_args:
-            engine_args["tensor_parallel_size"] = self.world_size
-
-        if "trust_remote_code" not in engine_args:
-            engine_args["trust_remote_code"] = True
-
-        return AsyncEngineArgs(**engine_args)
-
-    def get_sampling_params(self, **kwargs) -> SamplingParams:
-
-        top_k = kwargs.get("top_k", None)
-        if top_k is None or top_k == 0:
-            top_k = -1
-
-        stop_token_ids = kwargs.get("stop_token_ids", None)
-        stop_token_ids = stop_token_ids or []
-        stop_token_ids.append(self.tokenizer.eos_token_id)
-
-        stop_sequences = kwargs.get("stop_sequences", None)
-        if isinstance(stop_sequences, str) and stop_sequences != "":
-            stop = stop_sequences.split(",")
-        elif isinstance(stop_sequences, list) and len(stop_sequences) > 0:
-            stop = stop_sequences
-        else:
-            stop = []
-
-        sampling_params = SamplingParams(
-            n=1,
-            stop=stop,
-            stop_token_ids=stop_token_ids,
-            top_k=top_k,
-            top_p=kwargs.get("top_p"),
-            temperature=kwargs.get("temperature"),
-            min_tokens=kwargs.get("min_tokens"),
-            max_tokens=kwargs.get("max_tokens"),
-            frequency_penalty=kwargs.get("frequency_penalty"),
-            presence_penalty=kwargs.get("presence_penalty"),
-            use_beam_search=False,
-        )
-
-        return sampling_params
-
-    def remove(f: tp.Callable, defaults: tp.Dict[str, tp.Any]) -> tp.Callable:
-        # pylint: disable=no-self-argument
-        def wrapper(self, *args, **kwargs):
-            kwargs.update(defaults)
-            return f(self, *args, **kwargs)
-
-        # Update wrapper attributes for documentation, etc.
-        functools.update_wrapper(wrapper, f)
-
-        # for the purposes of inspect.signature as used by predictor.get_input_type,
-        # remove the argument (system_prompt)
-        sig = inspect.signature(f)
-        params = [p for name, p in sig.parameters.items() if name not in defaults]
-        wrapper.__signature__ = sig.replace(parameters=params)
-
-        # Return partialmethod, wrapper behaves correctly when part of a class
-        return functools.partialmethod(wrapper)
-
-    args_to_remove: dict[str, tp.Any] = {}
-    if not IS_INSTRUCT:
-        # this removes system_prompt from the Replicate API for non-chat models.
-        args_to_remove["system_prompt"] = None
-    if args_to_remove:
-        predict = remove(predict, args_to_remove)
+    if "system_prompt" not in PROMPT_TEMPLATE:
+        predict = remove_system_prompt_input(predict)
