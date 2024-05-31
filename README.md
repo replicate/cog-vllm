@@ -35,12 +35,23 @@ or customize it and push up your changes.
 If you're on a machine or VM with a GPU,
 you can try out changes before pushing them to Replicate.
 
-```console
-# Clone the cog-vllm repository
-$ git clone https://github.com/replicate/cog-vllm.git
-$ cd cog-vllm
+Start by [installing or upgrading Cog](https://cog.run/#install).
+You'll need Cog v0.9.9 or later:
 
-# Make a single prediction
+```console
+$ brew install cog
+```
+
+Then clone this repository:
+
+```console
+$ git clone https://github.com/replicate/cog-vllm
+$ cd cog-vllm
+```
+
+Make your first prediction against the model:
+
+```console
 $ export COG_WEIGHTS="..." # copy the URL to "Download Weights" from Replicate
 $ cog predict -e "COG_WEIGHTS=$COG_WEIGHTS" \ 
               -i prompt="Hello!"
