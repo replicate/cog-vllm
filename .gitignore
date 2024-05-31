@@ -2,4 +2,5 @@ model_path
 .cog
 __pycache__
 
+config.yaml
 models/**
