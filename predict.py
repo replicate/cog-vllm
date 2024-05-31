@@ -1,191 +1,196 @@
 import os, random, asyncio, time
-from typing import AsyncIterator, List, Union
+import typing as tp
 from cog import BasePredictor, Input, ConcatenateIterator
 from vllm import AsyncLLMEngine
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.sampling_params import SamplingParams
 import torch
-from utils import maybe_download_with_pget
 
+from uuid import uuid4
 from dotenv import load_dotenv
-load_dotenv()
+import yaml
 
-MODEL_ID = os.getenv("MODEL_ID")
-WEIGHTS_URL = os.getenv("COG_WEIGHTS")
-REMOTE_FILES = [
-    "config.json",
-    "model.safetensors",
-    "special_tokens_map.json",
-    "tokenizer.json",
-    "tokenizer.model",
-    "tokenizer_config.json"
-]
-PROMPT_TEMPLATE = "<s>[INST] {prompt} [/INST] "
+from utils import maybe_download, init_model_config
+from prompt_templates import get_prompt_template
 
-DEFAULT_MAX_NEW_TOKENS = os.getenv("DEFAULT_MAX_NEW_TOKENS", 512)
-DEFAULT_TEMPERATURE = os.getenv("DEFAULT_TEMPERATURE", 0.6)
-DEFAULT_TOP_P = os.getenv("DEFAULT_TOP_P", 0.9)
-DEFAULT_TOP_K = os.getenv("DEFAULT_TOP_K", 50)
-DEFAULT_PRESENCE_PENALTY = os.getenv("DEFAULT_PRESENCE_PENALTY", 0.0)  # 1.15
-DEFAULT_FREQUENCY_PENALTY = os.getenv("DEFAULT_FREQUENCY_PENALTY", 0.0)  # 0.2
+config = init_model_config()
+
+MODEL_ID = config["model_id"].split("/")[-1]
+DEFAULT_PROMPT_TEMPLATE = config.get("prompt_template", None)
+if not DEFAULT_PROMPT_TEMPLATE or DEFAULT_PROMPT_TEMPLATE == "":
+    DEFAULT_PROMPT_TEMPLATE = get_prompt_template(MODEL_ID)
+
+IS_INSTRUCT = config.get("is_instruct", True)
+DEFAULT_SYSTEM_PROMPT = config.get("system_prompt", None)
+if IS_INSTRUCT and not DEFAULT_SYSTEM_PROMPT:
+    DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
 
 
-class VLLMPipeline:
-    """
-    A simplified inference engine that runs inference w/ vLLM
-    """
+class Predictor(BasePredictor):
+    async def setup(self):
 
-    def __init__(self, *args, **kwargs) -> None:
-        args = AsyncEngineArgs(*args, **kwargs)
-        self.engine = AsyncLLMEngine.from_engine_args(args)
+        self.world_size = torch.cuda.device_count()
+        self.config = init_model_config()
+        self.model_path = os.path.join("models", self.config["model_id"])
+        self.engine_args = self.get_engine_args()
+
+        await maybe_download(self.model_path, self.config["model_url"])
+
+        self.engine = AsyncLLMEngine.from_engine_args(self.engine_args)
         self.tokenizer = (
-            self.engine.engine.tokenizer.tokenizer 
-            if hasattr(self.engine.engine.tokenizer, "tokenizer") 
+            self.engine.engine.tokenizer.tokenizer
+            if hasattr(self.engine.engine.tokenizer, "tokenizer")
             else self.engine.engine.tokenizer
         )
 
-    async def generate_stream(
-        self, prompt: str, sampling_params: SamplingParams
-    ) -> AsyncIterator[str]:
-        results_generator = self.engine.generate(
-            prompt, sampling_params, str(random.random())
-            )
-        async for generated_text in results_generator:
-            yield generated_text
-
-    async def __call__(
+    async def predict(
         self,
-        prompt: str,
-        max_new_tokens: int,
-        temperature: float,
-        top_p: float,
-        top_k: int,
-        stop_sequences: Union[str, List[str]] = None,
-        stop_token_ids: List[int] = None,
-        frequency_penalty: float = 0.0,
-        presence_penalty: float = 0.0,
-        incremental_generation: bool = True,
-    ) -> str:
-        """
-        Given a prompt, runs generation on the language model with vLLM.
-        """
-        if top_k is None or top_k == 0:
-            top_k = -1
+        prompt: str = Input(description="Prompt", default=""),
+        system_prompt: str = Input(
+            description="System prompt to send to the model. This is prepended to the prompt and helps guide system behavior.",
+            default=DEFAULT_SYSTEM_PROMPT,
+        ),
+        min_tokens: int = Input(
+            description="The minimum number of tokens the model should generate as output.",
+            default=0,
+        ),
+        max_tokens: int = Input(
+            description="The maximum number of tokens the model should generate as output.",
+            default=512,
+        ),
+        temperature: float = Input(
+            description="The value used to modulate the next token probabilities.",
+            default=0.6,
+        ),
+        top_p: float = Input(
+            description="A probability threshold for generating the output. If < 1.0, only keep the top tokens with cumulative probability >= top_p (nucleus filtering). Nucleus filtering is described in Holtzman et al. (http://arxiv.org/abs/1904.09751).",
+            default=0.9,
+        ),
+        top_k: int = Input(
+            description="The number of highest probability tokens to consider for generating the output. If > 0, only keep the top k tokens with highest probability (top-k filtering).",
+            default=50,
+        ),
+        presence_penalty: float = Input(description="Presence penalty", default=0.0),
+        frequency_penalty: float = Input(description="Frequency penalty", default=0.0),
+        stop_sequences: str = Input(
+            description="A comma-separated list of sequences to stop generation at. For example, '<end>,<stop>' will stop generation at the first instance of 'end' or '<stop>'.",
+            default=None,
+        ),
+        prompt_template: str = Input(
+            description="Prompt template. The string `{prompt}` will be substituted for the input prompt. If you want to generate dialog output, use this template as a starting point and construct the prompt string manually, leaving `prompt_template={prompt}`.",
+            default=DEFAULT_PROMPT_TEMPLATE,
+        ),
+    ) -> ConcatenateIterator[str]:
+        start = time.time()
+        request_id = uuid4().hex
+        generation_length = 0
 
-        stop_token_ids = stop_token_ids or []
-        stop_token_ids.append(self.tokenizer.eos_token_id)
-
-        if isinstance(stop_sequences, str) and stop_sequences != "":
-            stop = [stop_sequences]
-        elif isinstance(stop_sequences, list) and len(stop_sequences) > 0:
-            stop = stop_sequences
-        else:
-            stop = []
-
-        for tid in stop_token_ids:
-            stop.append(self.tokenizer.decode(tid))
-
-        sampling_params = SamplingParams(
+        sampling_params = self.get_sampling_params(
             n=1,
             top_p=top_p,
             top_k=top_k,
             temperature=temperature,
             use_beam_search=False,
-            stop=stop,
-            max_tokens=max_new_tokens,
+            stop_sequences=stop_sequences,
+            min_tokens=min_tokens,
+            max_tokens=max_tokens,
             frequency_penalty=frequency_penalty,
             presence_penalty=presence_penalty,
         )
 
-        generation_length = 0
+        if self.config["is_instruct"]:
+            prompt = prompt_template.format(prompt=prompt, system_prompt=system_prompt)
+        else:
+            prompt = prompt_template.format(prompt=prompt)
 
-        async for request_output in self.generate_stream(prompt, sampling_params):
+        generator = self.engine.generate(prompt, sampling_params, request_id)
+        async for request_output in generator:
             assert len(request_output.outputs) == 1
+
             generated_text = request_output.outputs[0].text
-            if incremental_generation:
-                yield generated_text[generation_length:]
-            else:
-                yield generated_text
+
+            # Catches partial emojis, waits for them to finish
+            generated_text = generated_text.replace("\N{REPLACEMENT CHARACTER}", "")
+
+            yield generated_text[generation_length:]
             generation_length = len(generated_text)
 
+        print(f"Generation took {time.time() - start:.2f}s")
+        print(f"Formatted prompt: {prompt}")
 
-class Predictor(BasePredictor):
-    async def setup(self):
-        n_gpus = torch.cuda.device_count()
-        start = time.time()
-        await maybe_download_with_pget(
-            MODEL_ID, WEIGHTS_URL, REMOTE_FILES
-        )
-        print(f"downloading weights took {time.time() - start:.3f}s")
-        self.llm = VLLMPipeline(
-            tensor_parallel_size=n_gpus,
-            model=MODEL_ID,
-            # quantization="awq",
-            dtype="auto",
-            trust_remote_code=True
-            # max_model_len=MAX_TOKENS
-        )
+    def get_engine_args(self) -> AsyncEngineArgs:
+        engine_args = self.config.get("engine_args", {})
+        if not engine_args:
+            engine_args = {}
 
-    async def predict(
-        self,
-        prompt: str,
-        max_new_tokens: int = Input(
-            description="The maximum number of tokens the model should generate as output.",
-            default=DEFAULT_MAX_NEW_TOKENS,
-        ),
-        temperature: float = Input(
-            description="The value used to modulate the next token probabilities.", default=DEFAULT_TEMPERATURE
-        ),
-        top_p: float = Input(
-            description="A probability threshold for generating the output. If < 1.0, only keep the top tokens with cumulative probability >= top_p (nucleus filtering). Nucleus filtering is described in Holtzman et al. (http://arxiv.org/abs/1904.09751).",
-            default=DEFAULT_TOP_P,
-        ),
-        top_k: int = Input(
-            description="The number of highest probability tokens to consider for generating the output. If > 0, only keep the top k tokens with highest probability (top-k filtering).",
-            default=DEFAULT_TOP_K,
-        ),
-        presence_penalty: float = Input(
-            description="Presence penalty",
-            default=DEFAULT_PRESENCE_PENALTY,
-        ),
-        frequency_penalty: float = Input(
-            description="Frequency penalty",
-            default=DEFAULT_FREQUENCY_PENALTY,
-        ),
-        prompt_template: str = Input(
-            description="The template used to format the prompt. The input prompt is inserted into the template using the `{prompt}` placeholder.",
-            default=PROMPT_TEMPLATE,
-        )
-    ) -> ConcatenateIterator[str]:
-        start = time.time()
-        generate = self.llm(
-            prompt=prompt_template.format(prompt=prompt),
-            max_new_tokens=max_new_tokens,
-            temperature=temperature,
-            top_p=top_p,
+        engine_args["model"] = self.model_path
+
+        if "dtype" not in engine_args:
+            engine_args["dtype"] = "auto"
+
+        if "tensor_parallel_size" not in engine_args:
+            engine_args["tensor_parallel_size"] = self.world_size
+
+        if "trust_remote_code" not in engine_args:
+            engine_args["trust_remote_code"] = True
+
+        return AsyncEngineArgs(**engine_args)
+
+    def get_sampling_params(self, **kwargs) -> SamplingParams:
+
+        top_k = kwargs.get("top_k", None)
+        if top_k is None or top_k == 0:
+            top_k = -1
+
+        stop_token_ids = kwargs.get("stop_token_ids", None)
+        stop_token_ids = stop_token_ids or []
+        stop_token_ids.append(self.tokenizer.eos_token_id)
+
+        stop_sequences = kwargs.get("stop_sequences", None)
+        if isinstance(stop_sequences, str) and stop_sequences != "":
+            stop = stop_sequences.split(",")
+        elif isinstance(stop_sequences, list) and len(stop_sequences) > 0:
+            stop = stop_sequences
+        else:
+            stop = []
+
+        sampling_params = SamplingParams(
+            n=1,
+            stop=stop,
+            stop_token_ids=stop_token_ids,
             top_k=top_k,
-            presence_penalty=presence_penalty,
-            frequency_penalty=frequency_penalty,
+            top_p=kwargs.get("top_p"),
+            temperature=kwargs.get("temperature"),
+            min_tokens=kwargs.get("min_tokens"),
+            max_tokens=kwargs.get("max_tokens"),
+            frequency_penalty=kwargs.get("frequency_penalty"),
+            presence_penalty=kwargs.get("presence_penalty"),
+            use_beam_search=False,
         )
-        async for text in generate:
-            yield text
-        print(f"generation took {time.time() - start:.3f}s")
 
+        return sampling_params
 
-async def main():
-    p = Predictor()
-    await p.setup()
-    async for text in p.predict(
-        prompt="Write a blogpost about SEO directed at a technical audience",
-        max_new_tokens=512,
-        temperature=0.8,
-        top_p=0.95,
-        top_k=50,
-        presence_penalty=1.0,
-        frequency_penalty=0.2,
-        prompt_template=PROMPT_TEMPLATE,
-    ):
-        print(text, end="")
+    def remove(f: tp.Callable, defaults: tp.Dict[str, tp.Any]) -> tp.Callable:
+        # pylint: disable=no-self-argument
+        def wrapper(self, *args, **kwargs):
+            kwargs.update(defaults)
+            return f(self, *args, **kwargs)
 
-if __name__ == "__main__":
-    asyncio.run(main())
+        # Update wrapper attributes for documentation, etc.
+        functools.update_wrapper(wrapper, f)
+
+        # for the purposes of inspect.signature as used by predictor.get_input_type,
+        # remove the argument (system_prompt)
+        sig = inspect.signature(f)
+        params = [p for name, p in sig.parameters.items() if name not in defaults]
+        wrapper.__signature__ = sig.replace(parameters=params)
+
+        # Return partialmethod, wrapper behaves correctly when part of a class
+        return functools.partialmethod(wrapper)
+
+    args_to_remove: dict[str, tp.Any] = {}
+    if not IS_INSTRUCT:
+        # this removes system_prompt from the Replicate API for non-chat models.
+        args_to_remove["system_prompt"] = None
+    if args_to_remove:
+        predict = remove(predict, args_to_remove)
