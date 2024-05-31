@@ -32,7 +32,7 @@ class Predictor(BasePredictor):
                 "or a path to the weights file."
             )
 
-        # weights = await download_and_extract_tarball(str(weights))
+        weights = await download_and_extract_tarball(str(weights))
 
         engine_args = AsyncEngineArgs(
             dtype="auto",
