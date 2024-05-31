@@ -22,16 +22,15 @@ async def download_and_extract_tarball(
         path (str): Path to the directory where the tarball was extracted
     """
 
+    # if path exists and is not empty, return
+    if os.path.exists(url) and os.listdir(url):
+        print(f"Files already present in the `{url}`, nothing will be downloaded.")
+        return url
+
     path = os.path.basename(url)
 
-    # if path exists and is not empty, return
-    if os.path.exists(path) and os.listdir(path):
-        print(f"Files already present in the `{path}`, nothing will be downloaded.")
-        return path
-
-    # if path exists but is empty, remove it so we can pull with pget
     if os.path.exists(path):
-        shutil.rmtree(path)
+        raise ValueError(f"Path {path} already exists")
 
     print(f"Downloading model assets to {path}...")
     start_time = time.time()
