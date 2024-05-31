@@ -1,9 +1,6 @@
 # Configuration for Cog ⚙️
 # Reference: https://github.com/replicate/cog/blob/main/docs/yaml.md
 
-# Configuration for Cog ⚙️
-# Reference: https://github.com/replicate/cog/blob/main/docs/yaml.md
-
 build:
   # set to true if your model requires a GPU
   gpu: true
@@ -20,6 +17,11 @@ build:
     - "sentencepiece==0.2.0"
     - "protobuf==5.26.1"
     - "python-dotenv==1.0.1"
+
+    - hf_transfer==0.1.6
+    - huggingface-hub==0.22.2
+    - requests
+    - tqdm
   # commands run after the environment is setup
   run:
     - --mount=type=cache,target=/root/.cache/pip TORCH_CUDA_ARCH_LIST="8.0;8.6" CUDA_HOME=/usr/local/cuda pip install --ignore-installed vllm==0.4.2
@@ -29,4 +31,6 @@ build:
     - ln -sf $(which echo) $(which pip)
 
 predict: "predict.py:Predictor"
+train: "train.py:train"
+
 concurrency: 32
