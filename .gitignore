@@ -3,3 +3,4 @@ model_path
 __pycache__
 
 models/**
+hf-cache/
