@@ -3,6 +3,7 @@ import os
 import subprocess
 import click
 import platform
+from typing import cast
 
 
 def update_env_file(model_id, cog_weights):
@@ -10,24 +11,20 @@ def update_env_file(model_id, cog_weights):
     with open(env_file, "r") as file:
         lines = file.readlines()
 
-    updated_lines = []
-    for line in lines:
-        if model_id:
-            if line.startswith("MODEL_ID="):
-                line = f"MODEL_ID={model_id}\n"
-        if cog_weights:
-            if line.startswith("COG_WEIGHTS="):
-                line = f'COG_WEIGHTS="{cog_weights}"\n'
-        updated_lines.append(line)
+    pairs = [
+        line.strip().split("=", 1)
+        for line in lines
+        if line and not line.startswith("#")
+    ]
+    env = dict(cast(list[tuple[str, str]], pairs))
 
-    # if MODEL_ID and COG_WEIGHTS lines were missing add them
-    if not any(line.startswith("MODEL_ID=") for line in updated_lines):
-        updated_lines.append(f"MODEL_ID={model_id}\n")
-    if not any(line.startswith("COG_WEIGHTS=") for line in updated_lines):
-        updated_lines.append(f'COG_WEIGHTS="{cog_weights}"\n')
+    if model_id:
+        env["MODEL_ID"] = model_id
+    if cog_weights:
+        env["COG_WEIGHTS"] = cog_weights
 
     with open(env_file, "w") as file:
-        file.writelines(updated_lines)
+        file.writelines("\n".join(f"{k}={v}" for k, v in env.items()))
 
 
 @click.command()
@@ -55,7 +52,7 @@ def main(model_id, cog_weights, tag_name):
         os.system("touch .env")
     update_env_file(model_id, cog_weights)
     # Install COG
-    cog_url = f"https://github.com/replicate/cog/releases/download/v0.10.0-alpha8/cog_{platform.system().lower()}_{platform.machine().lower()}"
+    cog_url = f"https://github.com/replicate/cog/releases/download/v0.10.0-alpha10/cog_{platform.system().lower()}_{platform.machine().lower()}"
     subprocess.run(["sudo", "curl", "-o", "/usr/local/bin/cog", "-L", cog_url])
     subprocess.run(["sudo", "chmod", "+x", "/usr/local/bin/cog"])
 
