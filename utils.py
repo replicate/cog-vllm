@@ -45,10 +45,13 @@ def remove_system_prompt_input(f: Callable) -> Callable:
     import functools
     import inspect
 
-    def wrapper(self, *args, **kwargs):
+    # we could use inspect.is{asyncgen,coroutine,generator}function
+    # but this is just for vLLM which should always be async def -> AsyncIterator
+    async def wrapper(self, *args, **kwargs):
         if "system_prompt" in kwargs:
             del kwargs["system_prompt"]
-        return f(self, *args, **kwargs)
+        async for item in f(self, *args, **kwargs):
+            yield item
 
     functools.update_wrapper(wrapper, f)
 
