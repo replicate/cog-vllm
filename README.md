@@ -19,25 +19,11 @@ With Cog-vLLM, you can easily deploy production-grade LLMs to your own infrastru
 
 # Quickstart
 
-## Build a Cog-vLLM image
-If you want to worry about the details later, you can call the `cog-vllm-helper` script. Just pass a model-id and the URL to a flat tarball that contains your model assets.
-
-The following commands will generate a `config.yaml` for Cog-vLLM and build a Cog-vLLM image.
-
-```console
-$ python cog-vllm-helper.py \
-  --model-id mistralai/mistral-7b-instruct-v0.2 \
-  --model-url https://weights.replicate.delivery/default/official-models/hf/mistralai/mistral-7b-instruct-v0.2/model.tar
---> ...
---> Generated config.yaml:
---> -------------------------
---> {'model_id': 'mistralai/mistral-7b-instruct-v0.2',
---> 'model_url': 'https://weights.replicate.delivery/default/official-models/hf/mistralai/mistral-7b-instruct-v0.2/model.tar'}
-
 ## Make a local prediction with your image
 
 If you don't have a local GPU, you can go ahead and push your image to Replicate (see the next step). If you do have a local GPU, run:
 
+```console
 $ cog predict -i prompt="Hello!"
 --> Starting Docker image cog-vllm-base and running setup()...
 --> Formatted prompt: <s>[INST] You are a helpful assistant. Hello! [/INST]
