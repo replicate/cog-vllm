@@ -18,7 +18,7 @@ SYSTEM_PROMPT = "You are a helpful assistant."
 
 
 class Predictor(BasePredictor):
-    def setup(self, weights: str):  # pylint: disable=invalid-overridden-method
+    async def setup(self, weights: str):  # pylint: disable=invalid-overridden-method, signature-differs
         print("COG_WEIGHTS", os.getenv("COG_WEIGHTS"))
         print("weights", weights)
 
