@@ -1,17 +1,11 @@
 import io
-import os
 import tarfile
 import time
 from collections import namedtuple
-from typing import List, Union
 
-import requests
+import httpx
 import tqdm
 from cog import BaseModel, Input, Path, Secret
-
-os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
-os.environ["HF_HOME"] = "./hf-cache"
-
 from huggingface_hub import (
     HfApi,
     get_hf_file_metadata,
@@ -92,8 +86,6 @@ def train(
     )
     if len(files) == 0:
         raise ValueError("No files to download")
-    else:
-        print(f"Downloading {len(files)} files")
 
     Entry = namedtuple("Entry", ["filename", "url", "metadata"])
     entries = [
@@ -107,6 +99,9 @@ def train(
         for x in files
     ]
 
+    start = time.time()
+    print(f"Downloading {len(files)} files...")
+
     # Download the files and write them to a tar file
     weights = Path("model.tar")
     with tarfile.open(name=str(weights), mode="w:") as tar:
@@ -117,25 +112,36 @@ def train(
             unit_scale=True,
             mininterval=1,
         ) as pbar:
-            for i, entry in enumerate(entries):
-                with requests.get(entry.url, stream=True, timeout=None) as response:
-                    response.raise_for_status()
+            with httpx.Client(follow_redirects=True) as client:
+                for n, entry in enumerate(entries, start=1):
+                    pbar.update(0)
+                    pbar.set_postfix(
+                        n=f"{n}/{len(entries)}",
+                        file=entry.filename,
+                        refresh=True,
+                    )
 
-                    with io.BytesIO() as buffer:
-                        for chunk in response.iter_content(chunk_size=32 * 1024):
-                            buffer.write(chunk)
-                            pbar.set_postfix(
-                                n=f"{i}/{len(entries)}",
-                                file=entry.filename[-20:],
-                                refresh=False,
-                            )
-                            pbar.update(len(chunk))
+                    with client.stream("GET", entry.url, timeout=None) as response:
+                        response.raise_for_status()
 
-                        buffer.seek(0)
+                        with io.BytesIO() as buffer:
+                            for chunk in response.iter_bytes(chunk_size=32 * 1024):
+                                buffer.write(chunk)
 
-                        tar_info = tarfile.TarInfo(entry.filename)
-                        tar_info.mtime = int(time.time())
-                        tar_info.size = entry.metadata.size
-                        tar.addfile(tar_info, fileobj=buffer)
+                                pbar.update(len(chunk))
+                                pbar.set_postfix(
+                                    n=f"{n}/{len(entries)}",
+                                    file=entry.filename,
+                                    refresh=False,
+                                )
+
+                            buffer.seek(0)
+
+                            tar_info = tarfile.TarInfo(entry.filename)
+                            tar_info.mtime = int(time.time())
+                            tar_info.size = entry.metadata.size
+                            tar.addfile(tar_info, fileobj=buffer)
+
+        print(f"Downloaded {len(files)} files in {time.time() - start:.2f} seconds")
 
     return TrainingOutput(weights=weights)
