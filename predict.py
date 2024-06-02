@@ -34,7 +34,7 @@ class Predictor(BasePredictor):
 
         engine_args = AsyncEngineArgs(
             dtype="auto",
-            tensor_parallel_size=torch.cuda.device_count(),
+            tensor_parallel_size=max(torch.cuda.device_count(), 1),
             trust_remote_code=True,
             model=weights,
         )
