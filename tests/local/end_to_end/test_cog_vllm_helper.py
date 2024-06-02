@@ -1,8 +1,9 @@
 import subprocess
 
 
-def test_mistral():
-    weights_url = "https://weights.replicate.delivery/default/official-models/hf/mistralai/mistral-7b-instruct-v0.2/model.tar"
+def test_predict():
+    # Mirror of https://huggingface.co/EleutherAI/pythia-70m
+    weights_url = "https://replicate.delivery/czjl/HUTgHv0M6FbnJxzkbe7Ly1fN19tabwYOZTFLuJld3f7MifpLB/model.tar"
 
     # Run the cog predict command and capture the output
     result = subprocess.run(
