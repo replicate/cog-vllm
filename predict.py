@@ -12,7 +12,8 @@ from vllm.sampling_params import SamplingParams
 import prompt_templates
 from utils import download_and_extract_tarball, remove_system_prompt_input
 
-PROMPT_TEMPLATE = prompt_templates.LLAMA_3_INSTRUCT
+PROMPT_TEMPLATE = prompt_templates.COMPLETION  # Change this for instruct models
+
 SYSTEM_PROMPT = "You are a helpful assistant."
 
 
