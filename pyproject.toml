@@ -4,6 +4,8 @@ version = "0.1.0"
 description = ""
 authors = []
 dependencies = [
+    "cog==0.10.0a10",
+
     "aiohttp[speedups]>=3.9.5",
     "scipy>=1.13.1",
     "sentencepiece>=0.2.0",

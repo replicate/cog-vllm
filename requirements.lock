@@ -17,8 +17,11 @@ aiosignal==1.3.1
     # via aiohttp
 anyio==4.4.0
     # via httpx
+    # via starlette
+    # via watchfiles
 attrs==23.2.0
     # via aiohttp
+    # via cog
 brotli==1.1.0
     # via aiohttp
 certifi==2024.6.2
@@ -29,6 +32,12 @@ cffi==1.16.0
     # via pycares
 charset-normalizer==3.3.2
     # via requests
+click==8.1.7
+    # via uvicorn
+cog==0.10.0a10
+    # via cog-vllm
+fastapi==0.98.0
+    # via cog
 filelock==3.14.0
     # via huggingface-hub
     # via torch
@@ -40,12 +49,22 @@ fsspec==2024.5.0
     # via torch
 h11==0.14.0
     # via httpcore
+    # via uvicorn
+h2==4.1.0
+    # via httpx
+hpack==4.0.0
+    # via h2
 httpcore==1.0.5
     # via httpx
+httptools==0.6.1
+    # via uvicorn
 httpx==0.27.0
+    # via cog
     # via cog-vllm
 huggingface-hub==0.23.2
     # via cog-vllm
+hyperframe==6.0.1
+    # via h2
 idna==3.7
     # via anyio
     # via httpx
@@ -72,9 +91,17 @@ pycares==4.4.0
     # via aiodns
 pycparser==2.22
     # via cffi
+pydantic==1.10.15
+    # via cog
+    # via fastapi
+python-dotenv==1.0.1
+    # via uvicorn
 pyyaml==6.0.1
+    # via cog
     # via huggingface-hub
+    # via uvicorn
 requests==2.32.3
+    # via cog
     # via huggingface-hub
 scipy==1.13.1
     # via cog-vllm
@@ -83,6 +110,10 @@ sentencepiece==0.2.0
 sniffio==1.3.1
     # via anyio
     # via httpx
+starlette==0.27.0
+    # via fastapi
+structlog==24.2.0
+    # via cog
 sympy==1.12.1
     # via torch
 torch==2.3.0
@@ -91,9 +122,19 @@ tqdm==4.66.4
     # via cog-vllm
     # via huggingface-hub
 typing-extensions==4.12.1
+    # via cog
     # via huggingface-hub
+    # via pydantic
     # via torch
 urllib3==2.2.1
     # via requests
+uvicorn==0.30.1
+    # via cog
+uvloop==0.19.0
+    # via uvicorn
+watchfiles==0.22.0
+    # via uvicorn
+websockets==12.0
+    # via uvicorn
 yarl==1.9.4
     # via aiohttp
