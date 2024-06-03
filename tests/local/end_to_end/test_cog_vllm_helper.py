@@ -1,30 +1,16 @@
 import subprocess
 
-def test_mistral():
-    # Run the helper script to set up the model
-    result = subprocess.run(
-        [
-            "python3",
-            "cog-vllm-helper.py",
-            "--model-id",
-            "mistralai/mistral-7b-instruct-v0.2",
-            "--model-url",
-            "https://weights.replicate.delivery/default/official-models/hf/mistralai/mistral-7b-instruct-v0.2/model.tar",
-        ],
-        capture_output=True,
-        text=True,
-        check=True
-    )
 
-    # Check that the helper script completed successfully
-    assert result.returncode == 0, f"Helper script failed with error: {result.stderr}"
+def test_predict():
+    # Mirror of https://huggingface.co/EleutherAI/pythia-70m
+    weights_url = "https://replicate.delivery/czjl/HUTgHv0M6FbnJxzkbe7Ly1fN19tabwYOZTFLuJld3f7MifpLB/model.tar"
 
     # Run the cog predict command and capture the output
     result = subprocess.run(
-        ["cog", "predict", "-i", "prompt=Hello!"],
+        ["cog", "predict", "-e", f"COG_WEIGHTS={weights_url}", "-i", "prompt=Hello!"],
         capture_output=True,
         text=True,
-        check=True
+        check=True,
     )
 
     # Check that the cog predict command completed successfully
