@@ -76,13 +76,44 @@ $ curl http://localhost:5000/predictions -X POST \
 When you're finished working,
 you can push your changes to Replicate.
 
-```console
-$ cog login
+Grab your token from [replicate.com/account](https://replicate.com/account) 
+and set it as an environment variable:
 
+```shell
+export REPLICATE_API_TOKEN=<your token>
+```
+
+```console
+$ echo $REPLICATE_API_TOKEN | cog login --token-stdin
 $ cog push r8.im/<your-username>/<your-model-name>
 --> ...
 --> Pushing image 'r8.im/...'
 ```
 
+After you push your model, you can try running it on Replicate.
+
+Install the [Replicate Python SDK][replicate-python]:
+
+```console
+$ pip install replicate
+```
+
+Create a prediction and stream its output:
+
+```python
+import replicate
+
+model = replicate.models.get("<your-username>/<your-model-name>")
+prediction = replicate.predictions.create(
+    version=model.latest_version,
+    input={ "prompt": "Hello" },
+    stream=True
+)
+
+for event in prediction.stream():
+    print(str(event), end="")
+```
+
 [Replicate]: https://replicate.com
 [vLLM-supported language model]: https://docs.vllm.ai/en/latest/models/supported_models.html
+[replicate-python]: https://github.com/replicate/replicate-python
