@@ -55,7 +55,7 @@ def train(
         If provided, item paths must not match any patterns from the denylist. 
         (e.g. "*.gguf").
         """,
-        default=None,
+        default="*.gguf",
     ),
 ) -> TrainingOutput:
     if hf_token is not None and isinstance(hf_token, Secret):
