@@ -23,7 +23,7 @@ def train(
     hf_model_id: str = Input(
         description="""
         Hugging Face model identifier 
-        (e.g. NousResearch/Hermes-2-Theta-Llama-3-8B)
+        (e.g. NousResearch/Hermes-2-Theta-Llama-3-8B).
         """,
         regex=r"^[a-zA-Z0-9_-]+/[a-zA-Z0-9_-]+$",
     ),
@@ -37,7 +37,7 @@ def train(
     hf_token: Secret = Input(
         description="""
         Hugging Face API token. 
-        Get your token at https://huggingface.co/settings/tokens.
+        Get your token at https://huggingface.co/settings/tokens
         """,
         default=None,
     ),
@@ -45,7 +45,7 @@ def train(
         description="""
         Patterns constituting the allowlist. 
         If provided, item paths must match at least one pattern from the allowlist. 
-        (e.g. "*.bin,*.safetensors").
+        (e.g. "*.safetensors").
         """,
         default=None,
     ),
@@ -53,7 +53,7 @@ def train(
         description="""
         Patterns constituting the denylist. 
         If provided, item paths must not match any patterns from the denylist. 
-        (e.g. "*.pdf").
+        (e.g. "*.gguf").
         """,
         default=None,
     ),
@@ -63,10 +63,7 @@ def train(
         hf_token = hf_token.get_secret_value().strip()
         hf_login(token=hf_token, add_to_git_credential=False)
     else:
-        print(
-            "No HuggingFace token provided. "
-            "Private tokenizers and models won't be accessible."
-        )
+        print("No HuggingFace token provided.")
 
     api = HfApi()
 
@@ -112,7 +109,10 @@ def train(
             unit_scale=True,
             mininterval=1,
         ) as pbar:
-            with httpx.Client(follow_redirects=True) as client:
+            headers = {"Authorization": f"Bearer {hf_token}"}
+            with httpx.Client(
+                headers=headers, follow_redirects=True, timeout=None
+            ) as client:
                 for n, entry in enumerate(entries, start=1):
                     pbar.update(0)
                     pbar.set_postfix(
@@ -121,7 +121,7 @@ def train(
                         refresh=True,
                     )
 
-                    with client.stream("GET", entry.url, timeout=None) as response:
+                    with client.stream("GET", entry.url) as response:
                         response.raise_for_status()
 
                         with io.BytesIO() as buffer:
