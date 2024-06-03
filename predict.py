@@ -1,10 +1,8 @@
 import time
-import os
-from typing import Optional, Union
 from uuid import uuid4
 
 import torch
-from cog import BasePredictor, ConcatenateIterator, File, Input, Path
+from cog import BasePredictor, ConcatenateIterator, Input
 from vllm import AsyncLLMEngine
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.sampling_params import SamplingParams
