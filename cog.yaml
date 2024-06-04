@@ -11,7 +11,6 @@ build:
 
   # a list of packages in the format <package-name>==<version>
   python_packages:
-    - "aiohttp[speedups]"
     - "scipy==1.13.0"
     - "sentencepiece==0.2.0"
     - "protobuf==5.26.1"
@@ -20,6 +19,7 @@ build:
     - huggingface-hub==0.22.2
     - httpx
     - tqdm
+    - Jinja2
   # commands run after the environment is setup
   run:
     - --mount=type=cache,target=/root/.cache/pip TORCH_CUDA_ARCH_LIST="8.0;8.6" CUDA_HOME=/usr/local/cuda pip install --ignore-installed vllm==0.4.2
