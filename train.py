@@ -25,7 +25,6 @@ def train(
         Hugging Face model identifier 
         (e.g. NousResearch/Hermes-2-Theta-Llama-3-8B).
         """,
-        regex=r"^[a-zA-Z0-9_-.]+/[a-zA-Z0-9_-.]+$",
     ),
     hf_model_sha: str = Input(
         description="""
