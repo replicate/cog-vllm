@@ -65,11 +65,13 @@ From that page, copy the weights URL from the <kbd>Download weights</kbd> button
 
 <img width="642" alt="Copy weights URL from Replicate training" src="https://github.com/replicate/cog-vllm/assets/7659/97c403a9-ec49-418a-a7e2-b37cb0e0bb8c">
 
+Set the `COG_WEIGHTS` environment variable with that copied value: 
+
 ```console
-$ export COG_WEIGHTS="..." # copy the URL to "Download Weights" from Replicate
+$ export COG_WEIGHTS="..."
 ```
 
-Make your first prediction against the model locally:
+Now, make your first prediction against the model locally:
 
 ```console
 $ cog predict -e "COG_WEIGHTS=$COG_WEIGHTS" \ 
