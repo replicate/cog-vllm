@@ -1,14 +1,15 @@
-import os
 import json
+import os
 import time
+from typing import NamedTuple, Optional
 from uuid import uuid4
 
+import jinja2
 import torch
 from cog import BasePredictor, ConcatenateIterator, Input
 from vllm import AsyncLLMEngine
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.sampling_params import SamplingParams
-from typing import NamedTuple, Optional
 
 import prompt_templates
 from utils import download_and_extract_tarball
@@ -107,25 +108,27 @@ class Predictor(BasePredictor):
     ) -> ConcatenateIterator[str]:
         start = time.time()
 
-        chat_template = self.tokenizer.chat_template
-        if chat_template:
+        if self.tokenizer.chat_template:
             system_prompt = "" if system_prompt is None else system_prompt
-            if "system" not in chat_template:  # this is incorrect
-                prompt = "\n\n".join([system_prompt, prompt])
-                messages = [
-                    {"role": "user", "content": prompt},
-                ]
-            else:
+            try:
                 messages = [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": prompt},
                 ]
-
-            prompt = self.tokenizer.apply_chat_template(
-                messages, tokenize=False, add_generation_prompt=True
-            )
+                prompt = self.tokenizer.apply_chat_template(
+                    messages, tokenize=False, add_generation_prompt=True
+                )
+            except jinja2.exceptions.TemplateError:
+                messages = [
+                    {"role": "user", "content": "\n\n".join([system_prompt, prompt])}
+                ]
+                prompt = self.tokenizer.apply_chat_template(
+                    messages, tokenize=False, add_generation_prompt=True
+                )
         elif system_prompt:
-            self.log("Warning: ignoring system prompt because no chat template was configured")
+            self.log(
+                "Warning: ignoring system prompt because no chat template was configured"
+            )
 
         sampling_params = SamplingParams(
             n=1,
@@ -146,7 +149,8 @@ class Predictor(BasePredictor):
                 list(stop_sequences) if isinstance(stop_sequences, list) else []
             )
 
-        generator = self.engine.generate(prompt, sampling_params, uuid4().hex)
+        request_id = uuid4().hex
+        generator = self.engine.generate(prompt, sampling_params, request_id)
         start = 0
 
         async for result in generator:
