@@ -60,8 +60,8 @@ def train(
         default="*.gguf",
     ),
     prompt_template: str = Input(
-        description="Prompt template. The string `{prompt}` will be substituted for the input prompt. If you want to generate dialog output, use this template as a starting point and construct the prompt string manually, leaving `prompt_template={prompt}`.",
-        default="{prompt}",
+        description="Prompt template. This is a Jinja2 template that overrides the HuggingFace tokenizer configuration. If this is set to None and nothing is configured on HuggingFace, no formatting is applied. To override HuggingFace configuration, set it to the string `{{messages[0]['content']}}`.",
+        default=None,
     ),
 ) -> TrainingOutput:
     if hf_token is not None and isinstance(hf_token, Secret):

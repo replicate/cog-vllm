@@ -8,7 +8,7 @@ from cog import BasePredictor, ConcatenateIterator, Input
 from vllm import AsyncLLMEngine
 from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.sampling_params import SamplingParams
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
 import prompt_templates
 from utils import download_and_extract_tarball
@@ -19,7 +19,7 @@ SYSTEM_PROMPT = "You are a helpful assistant."
 
 
 class PredictorConfig(NamedTuple):
-    prompt_template: str = None
+    prompt_template: Optional[str] = None
 
 
 class Predictor(BasePredictor):
@@ -42,12 +42,16 @@ class Predictor(BasePredictor):
                 os.path.join(weights, "predictor_config.json"), "r", encoding="utf-8"
             ) as f:
                 config = json.load(f)
-            self.config = PredictorConfig(**config)  # pylint: disable=attribute-defined-outside-init
+            self.config = PredictorConfig(
+                **config
+            )  # pylint: disable=attribute-defined-outside-init
         else:
             print(
                 "No predictor_config.json file found in weights, using default prompt template"
             )
-            self.config = PredictorConfig(prompt_template=PROMPT_TEMPLATE)  # pylint: disable=attribute-defined-outside-init
+            self.config = PredictorConfig(
+                prompt_template=PROMPT_TEMPLATE
+            )  # pylint: disable=attribute-defined-outside-init
 
         engine_args = AsyncEngineArgs(
             dtype="auto",
@@ -58,20 +62,20 @@ class Predictor(BasePredictor):
         self.engine = AsyncLLMEngine.from_engine_args(
             engine_args
         )  # pylint: disable=attribute-defined-outside-init
-        self.tokenizer = (  # pylint: disable=attribute-defined-outside-init
+        self.tokenizer = (
             self.engine.engine.tokenizer.tokenizer
             if hasattr(self.engine.engine.tokenizer, "tokenizer")
             else self.engine.engine.tokenizer
-        )
+        )  # pylint: disable=attribute-defined-outside-init
 
-        # chat_template  =self._load_chat_template()
-        # self.tokenizer.chat_template = chat_template
+        if self.config.prompt_template:
+            self.tokenizer.chat_template = self.config.prompt_template
 
     async def predict(  # pylint: disable=invalid-overridden-method, arguments-differ
         self,
         prompt: str = Input(description="Prompt", default=""),
         system_prompt: str = Input(
-            description="System prompt to send to the model. This is prepended to the prompt and helps guide system behavior.",
+            description="System prompt to send to the model. This is prepended to the prompt and helps guide system behavior. Ignored for non-chat models.",
             default="You are a helpful assistant.",
         ),
         min_tokens: int = Input(
@@ -106,7 +110,7 @@ class Predictor(BasePredictor):
         chat_template = self.tokenizer.chat_template
         if chat_template:
             system_prompt = "" if system_prompt is None else system_prompt
-            if "system" not in chat_template:
+            if "system" not in chat_template:  # this is incorrect
                 prompt = "\n\n".join([system_prompt, prompt])
                 messages = [
                     {"role": "user", "content": prompt},
@@ -117,7 +121,11 @@ class Predictor(BasePredictor):
                     {"role": "user", "content": prompt},
                 ]
 
-            prompt = self.tokenizer.apply_chat_template(messages, tokenize=False)
+            prompt = self.tokenizer.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True
+            )
+        elif system_prompt:
+            self.log("Warning: ignoring system prompt because no chat template was configured")
 
         sampling_params = SamplingParams(
             n=1,
@@ -155,5 +163,5 @@ class Predictor(BasePredictor):
 
             start = len(text)
 
-        print(f"Generation took {time.time() - start:.2f}s")
-        print(f"Formatted prompt: {prompt}")
+        self.log(f"Generation took {time.time() - start:.2f}s")
+        self.log(f"Formatted prompt: {prompt}")
