@@ -21,7 +21,7 @@ or to [Replicate].
 
 ## Quickstart
 
-Go to [replicate.com/vllm](https://replicate.com/vllm)
+Go to [replicate.com/replicate/vllm](https://replicate.com/replicate/vllm)
 and create a new vLLM model from a Hugging Face repo.
 
 Replicate downloads the model files, packages them into a `.tar` archive,
