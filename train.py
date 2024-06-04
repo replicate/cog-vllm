@@ -1,4 +1,5 @@
 import io
+import json
 import tarfile
 import time
 from collections import namedtuple
@@ -56,6 +57,10 @@ def train(
         """,
         default="*.gguf",
     ),
+    prompt_template: str = Input(
+        description="Prompt template. The string `{prompt}` will be substituted for the input prompt. If you want to generate dialog output, use this template as a starting point and construct the prompt string manually, leaving `prompt_template={prompt}`.",
+        default="{prompt}",
+    ),
 ) -> TrainingOutput:
     if hf_token is not None and isinstance(hf_token, Secret):
         print("Logging in to Hugging Face Hub...")
@@ -101,6 +106,20 @@ def train(
     # Download the files and write them to a tar file
     weights = Path("model.tar")
     with tarfile.open(name=str(weights), mode="w:") as tar:
+        # Add predictor_config.json
+        predictor_config_data = json.dumps(
+            {
+                "prompt_template": prompt_template,
+            }
+        ).encode("utf-8")
+        tar_info = tarfile.TarInfo("predictor_config.json")
+        tar_info.mtime = int(time.time())
+        tar_info.size = len(predictor_config_data)
+        tar.addfile(
+            tar_info=tar_info,
+            fileobj=io.BytesIO(predictor_config_data),
+        )
+
         with tqdm.tqdm(
             total=sum(entry.metadata.size for entry in entries),
             unit="B",
