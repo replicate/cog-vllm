@@ -22,7 +22,12 @@ or to [Replicate].
 ## Quickstart
 
 Go to [replicate.com/replicate/vllm](https://replicate.com/replicate/vllm)
-and create a new vLLM model from a Hugging Face repo.
+and create a new vLLM model from a [supported Hugging Face repo][vLLM-supported language model],
+such as [google/gemma-2b](https://huggingface.co/google/gemma-2b)
+
+> [!IMPORTANT]  
+> Gated models require a [Hugging Face API token](https://huggingface.co/settings/tokens),
+> which you can set in the `hf_token` field of the model creation form.
 
 <img width="1055" alt="Create a new vLLM model on Replicate" src="https://github.com/replicate/cog-vllm/assets/7659/a8f31837-0ed3-40f7-974c-d0a16ae48350">
 
