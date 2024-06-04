@@ -11,7 +11,7 @@ from vllm.sampling_params import SamplingParams
 from typing import NamedTuple
 
 import prompt_templates
-from utils import download_and_extract_tarball, remove_system_prompt_input
+from utils import download_and_extract_tarball
 
 PROMPT_TEMPLATE = prompt_templates.COMPLETION  # Change this for instruct models
 
