@@ -19,7 +19,7 @@ SYSTEM_PROMPT = "You are a helpful assistant."
 
 
 class PredictorConfig(NamedTuple):
-    prompt_template: str
+    prompt_template: str = None
 
 
 class Predictor(BasePredictor):
