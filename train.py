@@ -15,6 +15,8 @@ from huggingface_hub import (
 from huggingface_hub._login import _login as hf_login
 from huggingface_hub.utils import filter_repo_objects
 
+from predict import PredictorConfig
+
 
 class TrainingOutput(BaseModel):
     weights: Path
@@ -100,6 +102,8 @@ def train(
         for x in files
     ]
 
+    config = PredictorConfig(prompt_template=prompt_template)
+
     start = time.time()
     print(f"Downloading {len(files)} files...")
 
@@ -107,11 +111,7 @@ def train(
     weights = Path("model.tar")
     with tarfile.open(name=str(weights), mode="w:") as tar:
         # Add predictor_config.json
-        predictor_config_data = json.dumps(
-            {
-                "prompt_template": prompt_template,
-            }
-        ).encode("utf-8")
+        predictor_config_data = json.dumps(config._asdict()).encode("utf-8")
         tar_info = tarfile.TarInfo("predictor_config.json")
         tar_info.mtime = int(time.time())
         tar_info.size = len(predictor_config_data)
