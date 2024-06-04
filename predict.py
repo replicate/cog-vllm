@@ -1,3 +1,5 @@
+import os
+import json
 import time
 from uuid import uuid4
 
@@ -31,6 +33,19 @@ class Predictor(BasePredictor):
             )
 
         weights = await download_and_extract_tarball(str(weights))
+
+        if os.path.exists(os.path.join(weights, "predictor_config.json")):
+            print("Loading predictor_config.json")
+            with open(
+                os.path.join(weights, "predictor_config.json"), "r", encoding="utf-8"
+            ) as f:
+                config = json.load(f)
+            self.config = PredictorConfig(**config)  # pylint: disable=attribute-defined-outside-init
+        else:
+            print(
+                "No predictor_config.json file found in weights, using default prompt template"
+            )
+            self.config = PredictorConfig(prompt_template=PROMPT_TEMPLATE)  # pylint: disable=attribute-defined-outside-init
 
         engine_args = AsyncEngineArgs(
             dtype="auto",
