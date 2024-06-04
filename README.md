@@ -24,7 +24,7 @@ or to [Replicate].
 Go to [replicate.com/replicate/vllm](https://replicate.com/replicate/vllm)
 and create a new vLLM model from a Hugging Face repo.
 
-<img width="589" alt="Create a new vLLM model on Replicate" src="https://github.com/replicate/cog-vllm/assets/7659/aef92b2e-b252-465d-91af-319ae9295cda">
+<img width="1055" alt="Create a new vLLM model on Replicate" src="https://github.com/replicate/cog-vllm/assets/7659/a8f31837-0ed3-40f7-974c-d0a16ae48350">
 
 Replicate downloads the model files, packages them into a `.tar` archive,
 and pushes a new version of your model that's ready to use.
