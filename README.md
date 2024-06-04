@@ -36,10 +36,10 @@ If you're on a machine or VM with a GPU,
 you can try out changes before pushing them to Replicate.
 
 Start by [installing or upgrading Cog](https://cog.run/#install).
-You'll need Cog [v0.10.0-alpha10](https://github.com/replicate/cog/releases/tag/v0.10.0-alpha10):
+You'll need Cog [v0.10.0-alpha11](https://github.com/replicate/cog/releases/tag/v0.10.0-alpha11):
 
 ```console
-$ sudo curl -o /usr/local/bin/cog -L "https://github.com/replicate/cog/releases/download/v0.10.0-alpha10/cog_$(uname -s)_$(uname -m)"
+$ sudo curl -o /usr/local/bin/cog -L "https://github.com/replicate/cog/releases/download/v0.10.0-alpha11/cog_$(uname -s)_$(uname -m)"
 $ sudo chmod +x /usr/local/bin/cog
 ```
 
