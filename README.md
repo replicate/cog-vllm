@@ -59,10 +59,19 @@ $ git clone https://github.com/replicate/cog-vllm
 $ cd cog-vllm
 ```
 
-Make your first prediction against the model:
+Go to the [Replicate dashboard](https://replicate.com/trainings) and 
+navigate to the training for your vLLM model.
+From that page, copy the weights URL from the <kbd>Download weights</kbd> button.
+
+<img width="642" alt="Copy weights URL from Replicate training" src="https://github.com/replicate/cog-vllm/assets/7659/97c403a9-ec49-418a-a7e2-b37cb0e0bb8c">
 
 ```console
 $ export COG_WEIGHTS="..." # copy the URL to "Download Weights" from Replicate
+```
+
+Make your first prediction against the model locally:
+
+```console
 $ cog predict -e "COG_WEIGHTS=$COG_WEIGHTS" \ 
               -i prompt="Hello!"
 ```
