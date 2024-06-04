@@ -23,7 +23,9 @@ class PredictorConfig(NamedTuple):
 
 
 class Predictor(BasePredictor):
-    async def setup(self, weights: str):  # pylint: disable=invalid-overridden-method, signature-differs
+    async def setup(
+        self, weights: str
+    ):  # pylint: disable=invalid-overridden-method, signature-differs
         if not weights:
             raise ValueError(
                 "Weights must be provided. "
@@ -53,19 +55,24 @@ class Predictor(BasePredictor):
             model=weights,
         )
 
-        self.engine = AsyncLLMEngine.from_engine_args(engine_args)  # pylint: disable=attribute-defined-outside-init
+        self.engine = AsyncLLMEngine.from_engine_args(
+            engine_args
+        )  # pylint: disable=attribute-defined-outside-init
         self.tokenizer = (  # pylint: disable=attribute-defined-outside-init
             self.engine.engine.tokenizer.tokenizer
             if hasattr(self.engine.engine.tokenizer, "tokenizer")
             else self.engine.engine.tokenizer
         )
 
+        # chat_template  =self._load_chat_template()
+        # self.tokenizer.chat_template = chat_template
+
     async def predict(  # pylint: disable=invalid-overridden-method, arguments-differ
         self,
         prompt: str = Input(description="Prompt", default=""),
         system_prompt: str = Input(
             description="System prompt to send to the model. This is prepended to the prompt and helps guide system behavior.",
-            default=SYSTEM_PROMPT,
+            default="You are a helpful assistant.",
         ),
         min_tokens: int = Input(
             description="The minimum number of tokens the model should generate as output.",
@@ -93,14 +100,24 @@ class Predictor(BasePredictor):
             description="A comma-separated list of sequences to stop generation at. For example, '<end>,<stop>' will stop generation at the first instance of 'end' or '<stop>'.",
             default=None,
         ),
-        prompt_template: str = Input(
-            description="Prompt template. The string `{prompt}` will be substituted for the input prompt. If you want to generate dialog output, use this template as a starting point and construct the prompt string manually, leaving `prompt_template={prompt}`.",
-            default=PROMPT_TEMPLATE,
-        ),
     ) -> ConcatenateIterator[str]:
         start = time.time()
 
-        prompt = prompt_template.format(prompt=prompt, system_prompt=system_prompt)
+        chat_template = self.tokenizer.chat_template
+        if chat_template:
+            system_prompt = "" if system_prompt is None else system_prompt
+            if "system" not in chat_template:
+                prompt = "\n\n".join([system_prompt, prompt])
+                messages = [
+                    {"role": "user", "content": prompt},
+                ]
+            else:
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt},
+                ]
+
+            prompt = self.tokenizer.apply_chat_template(messages, tokenize=False)
 
         sampling_params = SamplingParams(
             n=1,
@@ -140,6 +157,3 @@ class Predictor(BasePredictor):
 
         print(f"Generation took {time.time() - start:.2f}s")
         print(f"Formatted prompt: {prompt}")
-
-    if "system_prompt" not in PROMPT_TEMPLATE:
-        predict = remove_system_prompt_input(predict)
