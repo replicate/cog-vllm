@@ -115,10 +115,7 @@ def train(
         tar_info = tarfile.TarInfo("predictor_config.json")
         tar_info.mtime = int(time.time())
         tar_info.size = len(predictor_config_data)
-        tar.addfile(
-            tar_info=tar_info,
-            fileobj=io.BytesIO(predictor_config_data),
-        )
+        tar.addfile(tar_info, fileobj=io.BytesIO(predictor_config_data))
 
         with tqdm.tqdm(
             total=sum(entry.metadata.size for entry in entries),
