@@ -34,8 +34,8 @@ class Predictor(BasePredictor):
                 "a URL to a tarball containing the weights file "
                 "or a path to the weights file."
             )
-
-        weights = await download_and_extract_tarball(str(weights))
+        # TODO: not going to rely on COG_WEIGHTS to load these weights for now, but undo this in the future. 
+        # weights = await download_and_extract_tarball(str(weights))
 
         if os.path.exists(os.path.join(weights, "predictor_config.json")):
             print("Loading predictor_config.json")
@@ -57,6 +57,8 @@ class Predictor(BasePredictor):
         engine_args = AsyncEngineArgs(
             dtype="auto",
             tensor_parallel_size=max(torch.cuda.device_count(), 1),
+            trust_remote_code=True,
+            quantization="deepspeedfp",
             model=weights,
         )
 
