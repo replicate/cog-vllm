@@ -48,10 +48,10 @@ class Predictor(BasePredictor):
             )  # pylint: disable=attribute-defined-outside-init
         else:
             print(
-                "No predictor_config.json file found in weights, using default prompt template"
+                "No predictor_config.json file found in weights, using prompt template from model tokenizer"
             )
             self.config = PredictorConfig(
-                prompt_template=PROMPT_TEMPLATE
+                prompt_template=None
             )  # pylint: disable=attribute-defined-outside-init
 
         engine_args = AsyncEngineArgs(
@@ -72,8 +72,7 @@ class Predictor(BasePredictor):
             else self.engine.engine.tokenizer
         )  # pylint: disable=attribute-defined-outside-init
 
-        if self.config.prompt_template:
-            self.tokenizer.chat_template = self.config.prompt_template
+        self.config.prompt_template = self.tokenizer.chat_template
 
     async def predict(  # pylint: disable=invalid-overridden-method, arguments-differ
         self,
