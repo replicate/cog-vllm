@@ -59,6 +59,7 @@ class Predictor(BasePredictor):
             tensor_parallel_size=max(torch.cuda.device_count(), 1),
             trust_remote_code=True,
             quantization="deepspeedfp",
+            load_format="sharded_state",
             model=weights,
         )
 
