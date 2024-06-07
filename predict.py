@@ -25,17 +25,17 @@ class PredictorConfig(NamedTuple):
 
 class Predictor(BasePredictor):
     async def setup(
-        self, weights: str
+        self
     ):  # pylint: disable=invalid-overridden-method, signature-differs
-        if not weights:
-            raise ValueError(
-                "Weights must be provided. "
-                "Set COG_WEIGHTS environment variable to "
-                "a URL to a tarball containing the weights file "
-                "or a path to the weights file."
-            )
-        # TODO: not going to rely on COG_WEIGHTS to load these weights for now, but undo this in the future. 
-        # weights = await download_and_extract_tarball(str(weights))
+        # if not weights:
+        #     raise ValueError(
+        #         "Weights must be provided. "
+        #         "Set COG_WEIGHTS environment variable to "
+        #         "a URL to a tarball containing the weights file "
+        #         "or a path to the weights file."
+        #     )
+        weights = "https://public-weights.replicate.delivery/official-models/sf/arctic-instruct-fp8/arctic-instruct-8bit.tar"
+        weights = await download_and_extract_tarball(str(weights))
 
         if os.path.exists(os.path.join(weights, "predictor_config.json")):
             print("Loading predictor_config.json")
