@@ -29,7 +29,7 @@ build:
     - sed -i "s/from vllm.model_executor.layers.quantization.schema import QuantParamSchema/# from vllm.model_executor.layers.quantization.schema import QuantParamSchema/" /root/.pyenv/versions/3.11.9/lib/python3.11/site-packages/vllm/model_executor/model_loader/weight_utils.py
     - ln -sf $(which echo) $(which pip)
 
-predict: "predict.py:Predictor"
+predict: "fake_predict.py:Predictor"
 train: "train.py:train"
 
 concurrency:

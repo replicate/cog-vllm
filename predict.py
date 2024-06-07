@@ -37,23 +37,6 @@ class Predictor(BasePredictor):
         weights = "https://public-weights.replicate.delivery/official-models/sf/arctic-instruct-fp8/arctic-instruct-8bit.tar"
         weights = await download_and_extract_tarball(str(weights))
 
-        if os.path.exists(os.path.join(weights, "predictor_config.json")):
-            print("Loading predictor_config.json")
-            with open(
-                os.path.join(weights, "predictor_config.json"), "r", encoding="utf-8"
-            ) as f:
-                config = json.load(f)
-            self.config = PredictorConfig(
-                **config
-            )  # pylint: disable=attribute-defined-outside-init
-        else:
-            print(
-                "No predictor_config.json file found in weights, using prompt template from model tokenizer"
-            )
-            self.config = PredictorConfig(
-                prompt_template=None
-            )  # pylint: disable=attribute-defined-outside-init
-
         engine_args = AsyncEngineArgs(
             dtype="auto",
             tensor_parallel_size=max(torch.cuda.device_count(), 1),
@@ -72,7 +55,23 @@ class Predictor(BasePredictor):
             else self.engine.engine.tokenizer
         )  # pylint: disable=attribute-defined-outside-init
 
-        self.config.prompt_template = self.tokenizer.chat_template
+        if os.path.exists(os.path.join(weights, "predictor_config.json")):
+            print("Loading predictor_config.json")
+            with open(
+                os.path.join(weights, "predictor_config.json"), "r", encoding="utf-8"
+            ) as f:
+                config = json.load(f)
+            self.config = PredictorConfig(
+                **config
+            )  # pylint: disable=attribute-defined-outside-init
+        else:
+            print(
+                "No predictor_config.json file found in weights, using prompt template from model tokenizer"
+            )
+            self.config = PredictorConfig(
+                prompt_template=self.tokenizer.chat_template
+            )  # pylint: disable=attribute-defined-outside-init
+
 
     async def predict(  # pylint: disable=invalid-overridden-method, arguments-differ
         self,
