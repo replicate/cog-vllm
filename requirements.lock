@@ -71,6 +71,7 @@ idna==3.7
     # via requests
     # via yarl
 jinja2==3.1.4
+    # via cog-vllm
     # via torch
 markupsafe==2.1.5
     # via jinja2
