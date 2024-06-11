@@ -3,10 +3,11 @@ import json
 import tarfile
 import time
 from collections import namedtuple
+from typing import Union
 
 import httpx
 import tqdm
-from cog import BaseModel, Input, Path, Secret
+from cog import BaseModel, Input, Path, Secret, File
 from huggingface_hub import (
     HfApi,
     get_hf_file_metadata,
@@ -19,10 +20,18 @@ from predict import PredictorConfig
 
 
 class TrainingOutput(BaseModel):
-    weights: Path
+    weights: Union[Path, File]
 
 
 def train(
+    override_weights_url: str = Input(
+        description="""
+        URL of the weights to download.
+
+        If specified, all other inputs are ignored.
+        """,
+        default=None,
+    ),
     hf_model_id: str = Input(
         description="""
         Hugging Face model identifier 
@@ -64,6 +73,10 @@ def train(
         default=None,
     ),
 ) -> TrainingOutput:
+    if override_weights_url is not None:
+        print(f"Using weights from {override_weights_url}...")
+        return TrainingOutput(weights=File(override_weights_url))
+
     if hf_token is not None and isinstance(hf_token, Secret):
         print("Logging in to Hugging Face Hub...")
         hf_token = hf_token.get_secret_value().strip()
