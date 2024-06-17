@@ -12,7 +12,7 @@ from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.sampling_params import SamplingParams
 
 import prompt_templates
-from utils import download_and_extract_tarball
+from utils import resolve_model_path
 
 PROMPT_TEMPLATE = prompt_templates.COMPLETION  # Change this for instruct models
 
@@ -31,11 +31,11 @@ class Predictor(BasePredictor):
             raise ValueError(
                 "Weights must be provided. "
                 "Set COG_WEIGHTS environment variable to "
-                "a URL to a tarball containing the weights file "
-                "or a path to the weights file."
+                "a URL to a tarball containing the model artifacts "
+                "or a path to the model artifacts."
             )
 
-        weights = await download_and_extract_tarball(str(weights))
+        weights = await resolve_model_path(str(weights))
 
         if os.path.exists(os.path.join(weights, "predictor_config.json")):
             print("Loading predictor_config.json")
