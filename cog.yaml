@@ -2,18 +2,31 @@
 # Reference: https://github.com/replicate/cog/blob/main/docs/yaml.md
 
 build:
+  # set to true if your model requires a GPU
   gpu: true
   cuda: "12.1"
 
+  # python version in the form '3.8' or '3.8.12'
   python_version: "3.11.9"
 
-  python_requirements: requirements.txt
+  # a list of packages in the format <package-name>==<version>
+  python_packages:
+    - "scipy==1.13.0" 
+    - "sentencepiece==0.2.0"
+    - "protobuf==5.26.1"
+    - "python-dotenv==1.0.1"
 
+    - huggingface-hub==0.22.2
+    - httpx
+    - tqdm
+    - Jinja2
+  # commands run after the environment is setup
   run:
-    - --mount=type=cache,target=/root/.cache/pip TORCH_CUDA_ARCH_LIST="8.0;8.6" CUDA_HOME=/usr/local/cuda pip install --ignore-installed vllm==0.4.2
-    - --mount=type=cache,target=/root/.cache/pip pip install cog==0.10.0a11
+    - --mount=type=cache,target=/root/.cache/pip TORCH_CUDA_ARCH_LIST="8.0;8.6" CUDA_HOME=/usr/local/cuda pip install --ignore-installed vllm==0.5.0
+    - --mount=type=cache,target=/root/.cache/pip pip install cog==0.10.0-alpha12
     - curl -o /usr/local/bin/pget -L "https://github.com/replicate/pget/releases/download/v0.8.1/pget_linux_x86_64" && chmod +x /usr/local/bin/pget
     - sed -i "s/from vllm.model_executor.layers.quantization.schema import QuantParamSchema/# from vllm.model_executor.layers.quantization.schema import QuantParamSchema/" /root/.pyenv/versions/3.11.9/lib/python3.11/site-packages/vllm/model_executor/model_loader/weight_utils.py
+    - TORCH_CUDA_ARCH_LIST="8.0;8.6" CUDA_HOME=/usr/local/cuda pip install vllm-flash-attn
     - ln -sf $(which echo) $(which pip)
 
 predict: "predict.py:Predictor"
