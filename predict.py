@@ -12,7 +12,7 @@ from vllm.engine.arg_utils import AsyncEngineArgs
 from vllm.sampling_params import SamplingParams
 
 import prompt_templates
-from utils import download_and_extract_tarball
+from utils import resolve_model_path
 
 PROMPT_TEMPLATE = prompt_templates.COMPLETION  # Change this for instruct models
 
@@ -35,7 +35,7 @@ class Predictor(BasePredictor):
                 "or a path to the weights file."
             )
 
-        weights = await download_and_extract_tarball(str(weights))
+        weights = await resolve_model_path(str(weights))
 
         if os.path.exists(os.path.join(weights, "predictor_config.json")):
             print("Loading predictor_config.json")
