@@ -2,6 +2,7 @@ import os
 import subprocess
 import time
 import warnings
+from urllib.parse import urlparse
 
 
 async def resolve_model_path(url_or_local_path: str) -> str:
@@ -14,16 +15,18 @@ async def resolve_model_path(url_or_local_path: str) -> str:
     Returns:
         str: Path to the directory containing the model artifacts.
     """
-    if "://" in url_or_local_path:
+
+    parsed_url = urlparse(url_or_local_path)
+    if parsed_url.scheme == "http" or parsed_url.scheme == "https":
         return await download_tarball(url_or_local_path)
-    else:
-        if not os.path.exists(url_or_local_path):
+    elif parsed_url.scheme == "file" or parsed_url.scheme == "":
+        if not os.path.exists(parsed_url.path):
             raise ValueError(
-                f"E1000: The provided local path '{url_or_local_path}' does not exist."
+                f"E1000: The provided local path '{parsed_url.path}' does not exist."
             )
-        if not os.listdir(url_or_local_path):
+        if not os.listdir(parsed_url.path):
             raise ValueError(
-                f"E1000: The provided local path '{url_or_local_path}' is empty."
+                f"E1000: The provided local path '{parsed_url.path}' is empty."
             )
 
         warnings.warn(
@@ -31,6 +34,8 @@ async def resolve_model_path(url_or_local_path: str) -> str:
             "To minimize boot time, store model assets externally on Replicate."
         )
         return url_or_local_path
+    else:
+        raise ValueError(f"E1000: Unsupported model path scheme: {parsed_url.scheme}")
 
 
 async def download_tarball(url: str) -> str:
