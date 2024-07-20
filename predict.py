@@ -25,7 +25,7 @@ class PredictorConfig(NamedTuple):
 
 class Predictor(BasePredictor):
     async def setup(self):
-        weights = "https://weights.replicate.delivery/default/hf/meta-llama/llama-3.1-405b-instruct.tar"
+        weights = "https://weights.replicate.delivery/default/hf/meta-llama/llama-3.1-405b-instruct-fp8.tar"
 
         weights = await resolve_model_path(str(weights))
 
@@ -48,7 +48,7 @@ class Predictor(BasePredictor):
 
         engine_args = AsyncEngineArgs(
             dtype="auto",
-            quantization="fp8",
+            quantization="fbgemm_fp8",
             tensor_parallel_size=max(torch.cuda.device_count(), 1),
             model=weights,
         )
