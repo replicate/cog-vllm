@@ -14,7 +14,7 @@ from vllm.sampling_params import SamplingParams
 import prompt_templates
 from utils import resolve_model_path
 
-PROMPT_TEMPLATE = prompt_templates.COMPLETION  # Change this for instruct models
+PROMPT_TEMPLATE = prompt_templates.LLAMA_3_INSTRUCT
 
 SYSTEM_PROMPT = "You are a helpful assistant."
 
@@ -24,16 +24,8 @@ class PredictorConfig(NamedTuple):
 
 
 class Predictor(BasePredictor):
-    async def setup(
-        self, weights: str
-    ):  # pylint: disable=invalid-overridden-method, signature-differs
-        if not weights:
-            raise ValueError(
-                "Weights must be provided. "
-                "Set COG_WEIGHTS environment variable to "
-                "a URL to a tarball containing the weights file "
-                "or a path to the weights file."
-            )
+    async def setup(self):
+        weights = "https://weights.replicate.delivery/default/hf/meta-llama/llama-3.1-405b-instruct.tar"
 
         weights = await resolve_model_path(str(weights))
 
@@ -56,6 +48,7 @@ class Predictor(BasePredictor):
 
         engine_args = AsyncEngineArgs(
             dtype="auto",
+            quantization="fp8",
             tensor_parallel_size=max(torch.cuda.device_count(), 1),
             model=weights,
         )
