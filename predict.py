@@ -5,7 +5,7 @@ from typing import NamedTuple, Optional
 from uuid import uuid4
 
 import jinja2
-import torch
+#import torch
 from cog import BasePredictor, ConcatenateIterator, Input
 from vllm import AsyncLLMEngine
 from vllm.engine.arg_utils import AsyncEngineArgs
@@ -49,9 +49,9 @@ class Predictor(BasePredictor):
         engine_args = AsyncEngineArgs(
             dtype="auto",
             quantization="fbgemm_fp8",
-            tensor_parallel_size=max(torch.cuda.device_count(), 1),
+            tensor_parallel_size=8, #max(torch.cuda.device_count(), 1),
             model=weights,
-            gpu_memory_utilization=0.4,
+            gpu_memory_utilization=0.6,
             max_model_len=8096,
         )
 
