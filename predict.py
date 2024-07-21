@@ -51,7 +51,7 @@ class Predictor(BasePredictor):
             quantization="fbgemm_fp8",
             tensor_parallel_size=8, #max(torch.cuda.device_count(), 1),
             model=weights,
-            gpu_memory_utilization=0.6,
+            gpu_memory_utilization=0.8,
             max_model_len=8096,
         )
 
