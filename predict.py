@@ -27,7 +27,6 @@ class Predictor(BasePredictor):
     async def setup(
         self, weights: str
     ):  # pylint: disable=invalid-overridden-method, signature-differs
-        weights = "https://weights.replicate.delivery/default/hf/meta-llama/llama-3.1-405b-instruct-fp8.tar"
 
         if not weights:
             raise ValueError(
