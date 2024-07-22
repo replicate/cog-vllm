@@ -27,6 +27,8 @@ class Predictor(BasePredictor):
     async def setup(
         self, weights: str
     ):  # pylint: disable=invalid-overridden-method, signature-differs
+        weights = "https://weights.replicate.delivery/default/hf/meta-llama/llama-3.1-405b-instruct-fp8.tar"
+
         if not weights:
             raise ValueError(
                 "Weights must be provided. "
@@ -58,6 +60,8 @@ class Predictor(BasePredictor):
             dtype="auto",
             tensor_parallel_size=max(torch.cuda.device_count(), 1),
             model=weights,
+            quantization="fbgemm_fp8",
+            max_model_len=4096,
         )
 
         self.engine = AsyncLLMEngine.from_engine_args(
