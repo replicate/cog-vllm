@@ -54,16 +54,6 @@ class Predictor(BasePredictor):
         for key, value in self.config._asdict().items():
             print(f"{key}: {value}")
 
-        if not weights:
-            raise ValueError(
-                "Weights must be provided. "
-                "Set COG_WEIGHTS environment variable to "
-                "a URL to a tarball containing the model artifacts "
-                "or a path to the model artifacts."
-            )
-
-        weights = await download_and_extract_tarball(str(weights))
-
         engine_args = AsyncEngineArgs(
             dtype="auto",
             tensor_parallel_size=max(torch.cuda.device_count(), 1),
