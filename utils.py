@@ -4,47 +4,47 @@ import time
 import warnings
 
 
-async def download_and_extract_tarball(
-    url_or_local_path: str,
-) -> str:
+async def resolve_model_path(url_or_local_path: str) -> str:
     """
-    Downloads a tarball from `url` and extracts to `dirname` if `dirname` does not exist.
+    Resolves the model path, downloading if necessary.
 
     Args:
-        url_or_local_path (str): URL to the tarball or local path to a directory containing the model artifacts
+        url_or_local_path (str): URL to the tarball or local path to a directory containing the model artifacts.
 
     Returns:
-        path (str): If `url_or_local_path` is a local path, returns the path. Otherwise, returns the path to the directory where the tarball was extracted.
+        str: Path to the directory containing the model artifacts.
     """
     if "://" in url_or_local_path:
-        path_is_local = False
-        filename = os.path.splitext(os.path.basename(url_or_local_path))[0]
-        path = os.path.join(os.getcwd(), "models", filename)
+        return await download_tarball(url_or_local_path)
     else:
-        path_is_local = True
-        path = url_or_local_path
+        if not os.path.exists(url_or_local_path):
+            raise ValueError(
+                f"The provided local path '{url_or_local_path}' does not exist."
+            )
+        if not os.listdir(url_or_local_path):
+            raise ValueError(f"The provided local path '{url_or_local_path}' is empty.")
+        return url_or_local_path
 
-    if path:
-        warnings.warn(
-            f"The provided path appears to be local. For local development, this is acceptable. However, for production, we strongly advise storing model assets externally to improve boot times.",
-            UserWarning,
-        )
+
+async def download_tarball(url: str) -> str:
+    """
+    Downloads a tarball from a URL and extracts it.
+
+    Args:
+        url (str): URL to the tarball.
+
+    Returns:
+        str: Path to the directory where the tarball was extracted.
+    """
+    filename = os.path.splitext(os.path.basename(url))[0]
+    path = os.path.join(os.getcwd(), "models", filename)
     if os.path.exists(path) and os.listdir(path):
-        print(f"Files already present in the `{path}`.")
+        print(f"Files already present in `{path}`.")
         return path
-    elif path_is_local and not os.path.exists(path):
-        raise ValueError(
-            f"E1000 GenericError: The provided local path '{path}' does not exist. Please provide a local path with the model artifacts or a URL to a tarball containing the model artifacts."
-        )
-    elif os.path.exists(path) and path_is_local:
-        raise ValueError(
-            f"E1000 GenericError: The provided local path '{path}' is empty. Please provide a local path with the model artifacts or a URL to a tarball containing the model artifacts."
-        )
 
     print(f"Downloading model assets to {path}...")
     start_time = time.time()
-    command = ["pget", url_or_local_path, path, "-x"]
+    command = ["pget", url, path, "-x"]
     subprocess.check_call(command, close_fds=True)
     print(f"Downloaded model assets in {time.time() - start_time:.2f}s")
-
     return path
