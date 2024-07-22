@@ -23,4 +23,4 @@ predict: "predict.py:Predictor"
 train: "train.py:train"
 
 concurrency:
-  max: 16
+  max: 64
