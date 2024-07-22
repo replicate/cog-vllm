@@ -46,13 +46,13 @@ class Predictor(BasePredictor):
             self.config = PredictorConfig(
                 **config
             )  # pylint: disable=attribute-defined-outside-init
+
         else:
-            print(
-                "No predictor_config.json file found in weights, using default prompt template"
-            )
-            self.config = PredictorConfig(
-                prompt_template=PROMPT_TEMPLATE
-            )  # pylint: disable=attribute-defined-outside-init
+            self.config = PredictorConfig()
+
+        print("Predictor Configuration:")
+        for key, value in self.config._asdict().items():
+            print(f"{key}: {value}")
 
         engine_args = AsyncEngineArgs(
             dtype="auto",
@@ -63,6 +63,7 @@ class Predictor(BasePredictor):
         self.engine = AsyncLLMEngine.from_engine_args(
             engine_args
         )  # pylint: disable=attribute-defined-outside-init
+
         self.tokenizer = (
             self.engine.engine.tokenizer.tokenizer
             if hasattr(self.engine.engine.tokenizer, "tokenizer")
@@ -70,7 +71,20 @@ class Predictor(BasePredictor):
         )  # pylint: disable=attribute-defined-outside-init
 
         if self.config.prompt_template:
+            print(
+                f"Using prompt template from `predictor_config.json`: {self.config.prompt_template}"
+            )
             self.tokenizer.chat_template = self.config.prompt_template
+
+        elif self.tokenizer.chat_template:
+            print(
+                f"Using prompt template from `tokenizer`: {self.tokenizer.chat_template}"
+            )
+        else:
+            print(
+                f"No prompt template specified in `predictor_config.json` or `tokenizer`, defaulting to: {PROMPT_TEMPLATE}"
+            )
+            self.tokenizer.chat_template = PROMPT_TEMPLATE
 
     async def predict(  # pylint: disable=invalid-overridden-method, arguments-differ
         self,
