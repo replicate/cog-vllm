@@ -51,8 +51,8 @@ class Predictor(BasePredictor):
             quantization="fbgemm_fp8",
             tensor_parallel_size=8, #max(torch.cuda.device_count(), 1),
             model=weights,
-            gpu_memory_utilization=0.8,
-            max_model_len=8096,
+            #gpu_memory_utilization=0.8,
+            max_model_len=4096,
         )
 
         self.engine = AsyncLLMEngine.from_engine_args(
