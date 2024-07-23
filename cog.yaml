@@ -20,7 +20,7 @@ build:
     #- ln -sf $(which echo) $(which pip)
 
 predict: "predict.py:Predictor"
-train: "train.py:train"
+#train: "train.py:train"
 
 concurrency:
   max: 32

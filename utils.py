@@ -99,6 +99,6 @@ async def download_tarball(url: str) -> str:
         str: Path to the directory where the tarball was extracted.
     """
     filename = os.path.splitext(os.path.basename(url))[0]
-    dest = os.path.join(os.getcwd(), "models", filename)
+    dest = os.path.join(os.getcwd(), filename)
     return maybe_download_tarball_with_pget(url, dest)
 
