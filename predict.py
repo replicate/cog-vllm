@@ -23,6 +23,48 @@ class PredictorConfig(NamedTuple):
     prompt_template: Optional[str] = None
 
 
+class UserError(Exception):
+    pass
+
+
+class TritonError(Exception):
+    pass
+
+
+def format_prompt(
+    prompt: str, prompt_template: str, system_prompt: Optional[str]
+) -> str:
+    if not prompt_template:
+        prompt_template = "{prompt}"
+    if prompt and "{prompt}" not in prompt_template:
+        raise UserError(
+            "E1003 BadPromptTemplate: You have submitted both a prompt and a prompt template that doesn't include '{prompt}'."
+            "Your prompt would not be used. "
+            "If don't want to use formatting, use your full prompt for the prompt argument and set prompt_template to '{prompt}'."
+        )
+    try:
+        return prompt_template.format(
+            system_prompt=system_prompt or "",
+            prompt=prompt,
+        )
+    except (ValueError, KeyError, IndexError) as e:
+        # sometimes people put the prompt in prompt_template
+        if len(prompt_template) > len(prompt):
+            raise UserError(
+                "E1004 PromptTemplateError: Prompt template must be a valid python format spec. "
+                "Did you submit your prompt as `prompt_template` instead of `prompt`? "
+                'If you want finer control over templating, set prompt_template to `"{prompt}"` to disable formatting. '
+                "You can't put JSON in prompt_template, because braces will be parsed as a python format string. "
+                f"Detail: {repr(e)}"
+            )
+        # most common case is "unmatched '{' in format spec",
+        # but IndexError/KeyError and other formatting errors can happen
+        # str(KeyError) is only the missing key which can be confusing
+        raise UserError(
+            f"E1004 PromptTemplateError: Prompt template must be a valid python format spec: {repr(e)}"
+        )
+
+
 class Predictor(BasePredictor):
     async def setup(
         self, weights: str
@@ -119,10 +161,21 @@ class Predictor(BasePredictor):
             description="A comma-separated list of sequences to stop generation at. For example, '<end>,<stop>' will stop generation at the first instance of 'end' or '<stop>'.",
             default=None,
         ),
+        prompt_template: str = Input(
+            description="A template to format the prompt with. If not provided, the default prompt template will be used.",
+            default=None,
+        ),
     ) -> ConcatenateIterator[str]:
         start = time.time()
 
-        if self.tokenizer.chat_template:
+        if prompt_template:
+            prompt = format_prompt(
+                prompt=prompt,
+                prompt_template=prompt_template,
+                system_prompt=system_prompt,
+            )
+
+        elif self.tokenizer.chat_template:
             system_prompt = "" if system_prompt is None else system_prompt
             try:
                 messages = [
