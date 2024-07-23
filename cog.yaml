@@ -15,9 +15,6 @@ build:
     # after new-quant-method merge
     - git+https://github.com/huggingface/transformers@96a074fa7e2c04b904f72d9e827398d4c5f90f25
     - accelerate
-    - tbb
-  # run:
-  #   - sed -i "s/from vllm.model_executor.layers.quantization.schema import QuantParamSchema/# from vllm.model_executor.layers.quantization.schema import QuantParamSchema/" /root/.pyenv/versions/3.11.9/lib/python3.11/site-packages/vllm/model_executor/model_loader/weight_utils.py # hopefully this still works?
 
 predict: "predict.py:Predictor"
 train: "train.py:train"

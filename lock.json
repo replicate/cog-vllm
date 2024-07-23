@@ -535,12 +535,6 @@
         "url": "https://files.pythonhosted.org/packages/b2/fe/81695a1aa331a842b582453b605175f419fe8540355886031328089d840a/sympy-1.13.1-py3-none-any.whl",
         "version": "1.13.1"
       },
-      "tbb": {
-        "sha256": "aaf667e92849adb012b8874d6393282afc318aca4407fc62f912ee30a22da46a",
-        "type": "url",
-        "url": "https://files.pythonhosted.org/packages/5d/b8/994132d9f9493d7b220637f614f3f87727e405b851d96aaffc7d43c2b298/tbb-2021.13.0-py2.py3-none-manylinux1_x86_64.whl",
-        "version": "2021.13.0"
-      },
       "tiktoken": {
         "sha256": "86b6e7dc2e7ad1b3757e8a24597415bafcfb454cebf9a33a01f2e6ba2e663992",
         "type": "url",
@@ -910,7 +904,6 @@
         "sympy": [
           "mpmath"
         ],
-        "tbb": [],
         "tiktoken": [
           "regex",
           "requests"
@@ -1026,5 +1019,5 @@
       }
     }
   },
-  "invalidationHash": "286105e84508d6faa2e55a7008ade7e664b7deffe2d38bc323bbb3bef444dcfc"
+  "invalidationHash": "6fa562503c69c87bdf141cb869aa626fb4f2b098b0c57967acdefa499f7c2e5e"
 }

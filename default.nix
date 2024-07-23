@@ -21,37 +21,49 @@ in
   ];
 
   python-env.pip.drvs = {
-    # deepspeed.env.HOME = "/tmp";
     # https://github.com/vllm-project/vllm/issues/4201
+    # https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/python-modules/torch/fix-cmake-cuda-toolkit.patch
     torch.mkDerivation.postInstall = ''
       sed -i 's|caster.operator typename make_caster<T>::template cast_op_type<T>();|caster;|g' $out/${config.python-env.deps.python.sitePackages}/torch/include/pybind11/cast.h
+      rm $out/${config.python-env.deps.python.sitePackages}/torch/share/cmake/Caffe2/FindCUDAToolkit.cmake
     '';
-    tbb = {
-      mkDerivation.buildInputs = [ pkgs.hwloc.lib ];
-      env.autoPatchelfIgnoreMissingDeps = [ "libhwloc.so.5" ]; # hwloc has 15, but not 5?
-    };
-    numba.mkDerivation.buildInputs = [
-      config.python-env.pip.drvs.tbb.public
-    ];
+    # TODO: should this have hwloc (and with enableCUDA)?
+    numba.mkDerivation.buildInputs = [ pkgs.tbb_2021_11 ];
+    # TODO: "cuBLAS disabled", "CUDART: not found", "CUDA Driver: Not Found", "NVRTC: Not Found"
     vllm = { config, ... }: {
       env.CUDA_HOME = "${cudaPackages.cuda_nvcc.bin}";
       # work around 9.0a not being supported
       env.TORCH_CUDA_ARCH_LIST="8.6;9.0";
-      # work around 'transformers>=4.39.1 not satisfied by version 4.40.0.dev0':
-      # env.dontCheckRuntimeDeps = true;
       # cmake called from setup.py
       env.dontUseCmakeConfigure = true;
 
       env.autoPatchelfIgnoreMissingDeps = [ "libcuda.so.1" ];
       env.appendRunpaths = [ "/run/opengl-driver/lib" "/usr/lib64" "$ORIGIN" ];
-      mkDerivation.buildInputs = [
-        cudaPackages.cuda_cudart.lib
-        cudaPackages.cuda_cudart.static
-        cudaPackages.cuda_cudart.dev
+      # patch pydantic req
+      mkDerivation.postPatch = ''
+        sed -i "s/from vllm.model_executor.layers.quantization.schema import QuantParamSchema/# from vllm.model_executor.layers.quantization.schema import QuantParamSchema/" vllm/model_executor/model_loader/weight_utils.py
+      '';
+      mkDerivation.buildInputs = with cudaPackages; [
+        # not all of these are necessary, but having extra doesn't affect runtime closure size
+        cuda_cudart.lib cuda_cudart.static cuda_cudart.dev
+
+        cudnn.lib cudnn.dev
+        nccl
+
+        cuda_nvtx.lib cuda_nvtx.dev
+        cuda_cudart
+        cuda_nvcc.dev
+        cuda_nvrtc.dev cuda_nvrtc.lib
+        cuda_nvml_dev.lib cuda_nvml_dev.dev
+        cuda_cccl
+        libcublas.lib libcublas.dev
+        libcurand.dev
+        cuda_profiler_api
+        libcusolver.lib libcusolver.dev
+        libcusparse.lib libcusparse.dev
       ];
       mkDerivation.nativeBuildInputs = [
-        # todo: replace with modular cuda
-        cudaPackages.cudatoolkit
+        cudaPackages.cuda_nvcc
         # the horrible hack:
         # setup.py calls cmake, but doesn't have the flags I need
         # but only once
@@ -64,10 +76,11 @@ in
         echo "cmake flags: $cmakeFlags ''${cmakeFlagsArray[@]}" "$@"
         exec ${pkgs.cmake}/bin/cmake $cmakeFlags "''${cmakeFlagsArray[@]}" "$@"
       '') pkgs.cmake ];
+
+      # cmake wants to fetch cutlass over git
       mkDerivation.cmakeFlags = [
         "-DFETCHCONTENT_SOURCE_DIR_CUTLASS=${config.deps.cutlass}"
       ];
-
       deps.cutlass = pkgs.fetchFromGitHub {
         owner = "nvidia";
         repo = "cutlass";
