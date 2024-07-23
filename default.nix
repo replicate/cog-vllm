@@ -1,6 +1,7 @@
 { pkgs, config, lib, ... }:
 let
   cudaPackages = pkgs.cudaPackages_12_1;
+  python3 = config.python-env.deps.python;
 in
 {
   cog.build.cog_version = "0.10.0-alpha17";
@@ -18,14 +19,19 @@ in
   python-env.pip.overridesList = [
     "pydantic<2"
     "starlette<0.28.0"
+    "nvidia-cudnn-cu12==${cudaPackages.cudnn.version}"
+  ];
+  python-env.pip.constraintsList = [
+    # "nvidia-cudnn-cu12==${cudaPackages.cudnn.version}"
+    "nvidia-cublas-cu12==${cudaPackages.libcublas.version}"
   ];
 
   python-env.pip.drvs = {
     # https://github.com/vllm-project/vllm/issues/4201
     # https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/python-modules/torch/fix-cmake-cuda-toolkit.patch
     torch.mkDerivation.postInstall = ''
-      sed -i 's|caster.operator typename make_caster<T>::template cast_op_type<T>();|caster;|g' $out/${config.python-env.deps.python.sitePackages}/torch/include/pybind11/cast.h
-      rm $out/${config.python-env.deps.python.sitePackages}/torch/share/cmake/Caffe2/FindCUDAToolkit.cmake
+      sed -i 's|caster.operator typename make_caster<T>::template cast_op_type<T>();|caster;|g' $out/${python3.sitePackages}/torch/include/pybind11/cast.h
+      rm $out/${python3.sitePackages}/torch/share/cmake/Caffe2/FindCUDAToolkit.cmake
     '';
     # TODO: should this have hwloc (and with enableCUDA)?
     numba.mkDerivation.buildInputs = [ pkgs.tbb_2021_11 ];
@@ -89,5 +95,24 @@ in
       };
     };
 
+    # patch in cuda packages from nixpkgs
+    nvidia-cublas-cu12.mkDerivation.postInstall = ''
+      pushd $out/${python3.sitePackages}/nvidia/cublas/lib
+      for f in ./*.so.12; do
+        chmod +w "$f"
+        rm $f
+        ln -s ${cudaPackages.libcublas.lib}/lib/$f ./$f
+      done
+      popd
+    '';
+    nvidia-cudnn-cu12.mkDerivation.postInstall = ''
+      pushd $out/${python3.sitePackages}/nvidia/cudnn/lib
+      for f in ./*.so.8; do
+        chmod +w "$f"
+        rm $f
+        ln -s ${cudaPackages.cudnn.lib}/lib/$f ./$f
+      done
+      popd
+    '';
   };
 }

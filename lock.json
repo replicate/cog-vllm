@@ -2,10 +2,10 @@
   "fetchPipMetadata": {
     "sources": {
       "accelerate": {
-        "sha256": "71fcf4be00872194071de561634268b71417d7f5b16b178e2fa76b6f117c52b0",
+        "sha256": "0a7f33d60ba09afabd028d4f0856dd19c5a734b7a596d637d9dd6e3d0eadbaf3",
         "type": "url",
-        "url": "https://files.pythonhosted.org/packages/e4/74/564f621699b049b0358f7ad83d7437f8219a5d6efb69bbfcca328b60152f/accelerate-0.32.1-py3-none-any.whl",
-        "version": "0.32.1"
+        "url": "https://files.pythonhosted.org/packages/15/33/b6b4ad5efa8b9f4275d4ed17ff8a44c97276171341ba565fdffb0e3dc5e8/accelerate-0.33.0-py3-none-any.whl",
+        "version": "0.33.0"
       },
       "aiohttp": {
         "sha256": "f22eb3a6c1080d862befa0a89c380b4dafce29dc6cd56083f630073d102eb595",
@@ -152,10 +152,10 @@
         "version": "0.27.0"
       },
       "huggingface-hub": {
-        "sha256": "7ad92edefb93d8145c061f6df8d99df2ff85f8379ba5fac8a95aca0642afa5d7",
+        "sha256": "d3a623d0f2cbb9399299aefc85e3423fa2689f18ab9b6e1aa0f95d1793889f30",
         "type": "url",
-        "url": "https://files.pythonhosted.org/packages/57/c0/cf4435f3186655e3bafdca08cd6c794e3866f1f89ed99595504e7240b6a2/huggingface_hub-0.24.0-py3-none-any.whl",
-        "version": "0.24.0"
+        "url": "https://files.pythonhosted.org/packages/96/e6/a1fd9cccd2c08244243aeef71b61cb9b2ba26575d8fd6f7c41edc95e9de0/huggingface_hub-0.24.1-py3-none-any.whl",
+        "version": "0.24.1"
       },
       "hyperframe": {
         "sha256": "0ec6bafd80d8ad2195c4f03aacba3a8265e57bc4cff261e802bf39970ed02a15",
@@ -296,10 +296,10 @@
         "version": "12.1.105"
       },
       "nvidia-cudnn-cu12": {
-        "sha256": "5ccb288774fdfb07a7e7025ffec286971c06d8d7b4fb162525334616d7629ff9",
+        "sha256": "adf4f59ed7a1341103822ed8df6e144f4d47ea8b10d9bf0ea0047ba738fd7b02",
         "type": "url",
-        "url": "https://files.pythonhosted.org/packages/ff/74/a2e2be7fb83aaedec84f391f082cf765dfb635e7caa9b49065f73e4835d8/nvidia_cudnn_cu12-8.9.2.26-py3-none-manylinux1_x86_64.whl",
-        "version": "8.9.2.26"
+        "url": "https://files.pythonhosted.org/packages/79/fb/8071b1c82db9b38dccbd11dfaa16aaa4b239d2deff5af711d8b01467554f/nvidia_cudnn_cu12-8.9.7.29-py3-none-manylinux1_x86_64.whl",
+        "version": "8.9.7.29"
       },
       "nvidia-cufft-cu12": {
         "sha256": "794e3948a1aa71fd817c3775866943936774d1c14e7628c74f6f7417224cdf56",
@@ -792,7 +792,8 @@
         "nvidia-cuda-nvrtc-cu12": [],
         "nvidia-cuda-runtime-cu12": [],
         "nvidia-cudnn-cu12": [
-          "nvidia-cublas-cu12"
+          "nvidia-cublas-cu12",
+          "nvidia-cuda-nvrtc-cu12"
         ],
         "nvidia-cufft-cu12": [],
         "nvidia-curand-cu12": [],
@@ -1019,5 +1020,5 @@
       }
     }
   },
-  "invalidationHash": "6fa562503c69c87bdf141cb869aa626fb4f2b098b0c57967acdefa499f7c2e5e"
+  "invalidationHash": "6eb738c57e50f164f86fb3c2f89e80a3b7ec0b930441dc524196b6380eee4040"
 }
