@@ -94,6 +94,7 @@ class Predictor(BasePredictor):
             model=weights,
             #gpu_memory_utilization=0.8,
             max_model_len=4096,
+            enable_prefix_caching=True,
         )
 
         self.engine = AsyncLLMEngine.from_engine_args(
