@@ -1,0 +1,56 @@
+name: CI
+
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+# Ensure only one workflow instance runs at a time. For branches other than the
+# default branch, cancel the pending jobs in the group. For the default branch,
+# queue them up. This avoids cancelling jobs that are in the middle of deploying
+# to production.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != format('refs/heads/{0}', github.event.repository.default_branch) }}
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install dependencies  
+        run: pip install -r requirements-dev.txt
+      - name: Run pylint
+        run: |
+          pylint --recursive y tests/**/*.py
+          pylint --recursive y ./*.py
+  
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Run unit tests
+        run: pytest tests/unit
+
+  build-and-push:
+    name: Build and push
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Cog
+        run: |
+          sudo curl -o /usr/local/bin/cog -L "https://github.com/replicate/cog/releases/latest/download/cog_$(uname -s)_$(uname -m)"
+          sudo chmod +x /usr/local/bin/cog
+      - name: Build and push
+        env:
+          REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}
+        run: |
+          cog build
+          cog push r8.im/replicate/vllm
