@@ -2,3 +2,4 @@ pytest-asyncio
 pytest-mock
 pylint
 black
+cog
