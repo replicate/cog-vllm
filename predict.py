@@ -21,6 +21,7 @@ SYSTEM_PROMPT = "You are a helpful assistant."
 
 class PredictorConfig(NamedTuple):
     prompt_template: Optional[str] = None
+    engine_args: Optional[dict] = None
 
 
 class UserError(Exception):
@@ -85,6 +86,11 @@ class Predictor(BasePredictor):
                 os.path.join(weights, "predictor_config.json"), "r", encoding="utf-8"
             ) as f:
                 config = json.load(f)
+                print(f"Config loaded: {config}")
+                print(
+                    f"Config loaded: {config}"
+                )  # Debug print to check config contents
+
             self.config = PredictorConfig(
                 **config
             )  # pylint: disable=attribute-defined-outside-init
@@ -96,15 +102,27 @@ class Predictor(BasePredictor):
         for key, value in self.config._asdict().items():
             print(f"{key}: {value}")
 
-        engine_args = AsyncEngineArgs(
-            dtype="auto",
-            tensor_parallel_size=max(torch.cuda.device_count(), 1),
-            model=weights,
-        )
+        engine_args = self.config.engine_args or {}
+        engine_args["model"] = weights
 
-        self.engine = AsyncLLMEngine.from_engine_args(
-            engine_args
-        )  # pylint: disable=attribute-defined-outside-init
+        if "dtype" not in engine_args:
+            engine_args["dtype"] = "auto"
+        if "tensor_parallel_size" not in engine_args:
+            engine_args["tensor_parallel_size"] = max(torch.cuda.device_count(), 1)
+
+        engine_args = AsyncEngineArgs(**engine_args)
+
+        try:
+            self.engine = AsyncLLMEngine.from_engine_args(
+                engine_args
+            )  # pylint: disable=attribute-defined-outside-init
+        except (Exception, TypeError) as e:
+            if isinstance(e, TypeError):
+                print(f"E1201 UnexpectedEngineArg:{e}")
+                raise e
+            else:
+                print(f"E1200 VLLMUnknownError: {e}")
+                raise e
 
         self.tokenizer = (
             self.engine.engine.tokenizer.tokenizer
