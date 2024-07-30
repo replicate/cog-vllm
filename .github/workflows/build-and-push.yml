@@ -2,9 +2,6 @@ name: CI
 
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 # Ensure only one workflow instance runs at a time. For branches other than the
@@ -43,7 +40,7 @@ jobs:
     permissions:
       contents: 'read'
       id-token: 'write'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latest-16-cores
     steps:
       - uses: actions/checkout@v3
       - name: Install Cog
