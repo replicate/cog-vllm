@@ -37,9 +37,9 @@ jobs:
         run: pip install -r requirements-dev.txt
       - name: Run unit tests
         run: pytest tests/unit
-
   build-and-push:
     name: Build and push
+    needs: [lint, unit-tests]
     permissions:
       contents: 'read'
       id-token: 'write'
