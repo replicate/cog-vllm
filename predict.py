@@ -291,10 +291,11 @@ class Predictor(BasePredictor):
 
     def load_config(self, weights: str) -> PredictorConfig:
         """
-        Load the predictor configuration from the specified weights directory or the current directory.
+        Load the predictor configuration from the specified weights directory or
+        the current directory.
 
-        Load `predictor_config.json` from the weights directory or current directory. Return a default
-        PredictorConfig object if not found or an error occurs.
+        Load `predictor_config.json` from the weights directory or current directory.
+        Return a default PredictorConfig object if not found or an error occurs.
 
         Priority:
         1. Load `predictor_config.json` from the specified weights directory.
