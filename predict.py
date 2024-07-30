@@ -1,15 +1,18 @@
+# pylint: disable=missing-module-docstring, no-name-in-module, attribute-defined-outside-init
 import json
 import os
 import time
-from typing import NamedTuple, Optional
+from typing import Optional, Dict
 from uuid import uuid4
+from dataclasses import dataclass, field
+from pprint import pprint
 
 import jinja2
-import torch
+import torch  # pylint: disable=import-error
 from cog import BasePredictor, ConcatenateIterator, Input
 from vllm import AsyncLLMEngine
-from vllm.engine.arg_utils import AsyncEngineArgs
-from vllm.sampling_params import SamplingParams
+from vllm.engine.arg_utils import AsyncEngineArgs  # pylint: disable=import-error
+from vllm.sampling_params import SamplingParams  # pylint: disable=import-error
 
 import prompt_templates
 from utils import resolve_model_path
@@ -19,95 +22,94 @@ PROMPT_TEMPLATE = prompt_templates.COMPLETION  # Change this for instruct models
 SYSTEM_PROMPT = "You are a helpful assistant."
 
 
-class PredictorConfig(NamedTuple):
+@dataclass
+class PredictorConfig:
+    """
+    PredictorConfig is a configuration class for the Predictor.
+
+    Attributes:
+        prompt_template (Optional[str]): A template to format the prompt with. If not provided,
+                                         the default prompt template will be used.
+        engine_args (Optional[Dict]): A dictionary of engine arguments. If not provided,
+                                      an empty dictionary will be used.
+    """
+
     prompt_template: Optional[str] = None
-    engine_args: Optional[dict] = None
+    engine_args: Optional[Dict] = field(default_factory=dict)
+
+    def __post_init__(self):
+        if self.engine_args is None:
+            self.engine_args = {}
+        if not isinstance(self.engine_args, dict):
+            raise UserError(
+                "E1202 InvalidPredictorConfig: engine_args must be "
+                "a valid JSON object that maps to a dictionary."
+            )
 
 
+# pylint: disable=missing-class-docstring
 class UserError(Exception):
     pass
 
 
-class TritonError(Exception):
+# pylint: disable=missing-class-docstring
+class VLLMError(Exception):
     pass
 
 
 def format_prompt(
     prompt: str, prompt_template: str, system_prompt: Optional[str]
 ) -> str:
+    """
+    Formats the given prompt using the provided prompt template and system prompt.
+
+    Args:
+        prompt (str): The user-provided prompt to be formatted.
+        prompt_template (str): The template string that includes placeholders for the prompt
+        and, optionally, system prompt. Must include {prompt}.
+        system_prompt (Optional[str]): An optional system prompt to be included in the
+        formatted prompt.
+
+    Returns:
+        str: The formatted prompt string.
+
+    Raises:
+        UserError: If the prompt template does not include the '{prompt}' placeholder or if
+        there is an error in formatting.
+    """
     if not prompt_template:
         prompt_template = "{prompt}"
     if prompt and "{prompt}" not in prompt_template:
         raise UserError(
-            "E1003 BadPromptTemplate: You have submitted both a prompt and a prompt template that doesn't include '{prompt}'."
-            "Your prompt would not be used. "
-            "If don't want to use formatting, use your full prompt for the prompt argument and set prompt_template to '{prompt}'."
+            "E1003 BadPromptTemplate: You have submitted both a prompt and a "
+            "prompt template that doesn't include '{prompt}'. Your prompt would "
+            "not be used. If don't want to use formatting, use your full prompt "
+            "for the prompt argument and set prompt_template to '{prompt}'."
         )
     try:
-        return prompt_template.format(
-            system_prompt=system_prompt or "",
-            prompt=prompt,
-        )
+        return prompt_template.format(system_prompt=system_prompt or "", prompt=prompt)
     except (ValueError, KeyError, IndexError) as e:
         # sometimes people put the prompt in prompt_template
         if len(prompt_template) > len(prompt):
             raise UserError(
-                "E1004 PromptTemplateError: Prompt template must be a valid python format spec. "
-                "Did you submit your prompt as `prompt_template` instead of `prompt`? "
-                'If you want finer control over templating, set prompt_template to `"{prompt}"` to disable formatting. '
-                "You can't put JSON in prompt_template, because braces will be parsed as a python format string. "
+                "E1004 PromptTemplateError: Prompt template must be a valid "
+                "python format spec. Did you submit your prompt as "
+                "`prompt_template` instead of `prompt`? If you want finer "
+                'control over templating, set prompt_template to `"{prompt}"` '
+                "to disable formatting. You can't put JSON in prompt_template, "
+                "because braces will be parsed as a python format string. "
                 f"Detail: {repr(e)}"
-            )
+            ) from e
         # most common case is "unmatched '{' in format spec",
         # but IndexError/KeyError and other formatting errors can happen
         # str(KeyError) is only the missing key which can be confusing
         raise UserError(
-            f"E1004 PromptTemplateError: Prompt template must be a valid python format spec: {repr(e)}"
-        )
+            f"E1004 PromptTemplateError: Prompt template must be a valid "
+            f"python format spec: {repr(e)}"
+        ) from e
 
 
-class UserError(Exception):
-    pass
-
-
-class TritonError(Exception):
-    pass
-
-
-def format_prompt(
-    prompt: str, prompt_template: str, system_prompt: Optional[str]
-) -> str:
-    if not prompt_template:
-        prompt_template = "{prompt}"
-    if prompt and "{prompt}" not in prompt_template:
-        raise UserError(
-            "E1003 BadPromptTemplate: You have submitted both a prompt and a prompt template that doesn't include '{prompt}'."
-            "Your prompt would not be used. "
-            "If don't want to use formatting, use your full prompt for the prompt argument and set prompt_template to '{prompt}'."
-        )
-    try:
-        return prompt_template.format(
-            system_prompt=system_prompt or "",
-            prompt=prompt,
-        )
-    except (ValueError, KeyError, IndexError) as e:
-        # sometimes people put the prompt in prompt_template
-        if len(prompt_template) > len(prompt):
-            raise UserError(
-                "E1004 PromptTemplateError: Prompt template must be a valid python format spec. "
-                "Did you submit your prompt as `prompt_template` instead of `prompt`? "
-                'If you want finer control over templating, set prompt_template to `"{prompt}"` to disable formatting. '
-                "You can't put JSON in prompt_template, because braces will be parsed as a python format string. "
-                f"Detail: {repr(e)}"
-            )
-        # most common case is "unmatched '{' in format spec",
-        # but IndexError/KeyError and other formatting errors can happen
-        # str(KeyError) is only the missing key which can be confusing
-        raise UserError(
-            f"E1004 PromptTemplateError: Prompt template must be a valid python format spec: {repr(e)}"
-        )
-
-
+# pylint: disable=missing-class-docstring
 class Predictor(BasePredictor):
     async def setup(
         self, weights: str
@@ -123,28 +125,26 @@ class Predictor(BasePredictor):
         weights = await resolve_model_path(str(weights))
 
         if os.path.exists(os.path.join(weights, "predictor_config.json")):
-            print("Loading predictor_config.json")
-            with open(
-                os.path.join(weights, "predictor_config.json"), "r", encoding="utf-8"
-            ) as f:
-                config = json.load(f)
-                print(f"Config loaded: {config}")
-                print(
-                    f"Config loaded: {config}"
-                )  # Debug print to check config contents
-
-            self.config = PredictorConfig(
-                **config
-            )  # pylint: disable=attribute-defined-outside-init
+            try:
+                print("Loading predictor_config.json")
+                with open(
+                    os.path.join(weights, "predictor_config.json"),
+                    "r",
+                    encoding="utf-8",
+                ) as f:
+                    config = json.load(f)
+                # pylint: disable=attribute-defined-outside-init
+                self.config = PredictorConfig(**config)
+            except Exception as e:
+                raise UserError(f"E1202 InvalidPredictorConfig: {e}") from e
 
         else:
+            # pylint: disable=attribute-defined-outside-init
             self.config = PredictorConfig()
 
-        print("Predictor Configuration:")
-        for key, value in self.config._asdict().items():
-            print(f"{key}: {value}")
-
+        pprint(self.config)
         engine_args = self.config.engine_args or {}
+
         engine_args["model"] = weights
 
         if "dtype" not in engine_args:
@@ -155,22 +155,23 @@ class Predictor(BasePredictor):
         engine_args = AsyncEngineArgs(**engine_args)
 
         try:
+            # pylint: disable=attribute-defined-outside-init
             self.engine = AsyncLLMEngine.from_engine_args(
                 engine_args
             )  # pylint: disable=attribute-defined-outside-init
-        except (Exception, TypeError) as e:
-            if isinstance(e, TypeError):
-                print(f"E1201 UnexpectedEngineArg:{e}")
-                raise e
-            else:
-                print(f"E1200 VLLMUnknownError: {e}")
-                raise e
+        except TypeError as e:
+            print(f"E1201 UnexpectedEngineArg: {e}")
+            raise
+        except Exception as e:
+            print(f"E1200 VLLMUnknownError: {e}")
+            raise
 
+        # pylint: disable=attribute-defined-outside-init
         self.tokenizer = (
             self.engine.engine.tokenizer.tokenizer
             if hasattr(self.engine.engine.tokenizer, "tokenizer")
             else self.engine.engine.tokenizer
-        )  # pylint: disable=attribute-defined-outside-init
+        )
 
         if self.config.prompt_template:
             print(
@@ -184,15 +185,17 @@ class Predictor(BasePredictor):
             )
         else:
             print(
-                f"No prompt template specified in `predictor_config.json` or `tokenizer`, defaulting to: {PROMPT_TEMPLATE}"
+                "No prompt template specified in `predictor_config.json` or "
+                f"`tokenizer`, defaulting to: {PROMPT_TEMPLATE}"
             )
             self.tokenizer.chat_template = PROMPT_TEMPLATE
 
-    async def predict(  # pylint: disable=invalid-overridden-method, arguments-differ
+    async def predict(  # pylint: disable=invalid-overridden-method, arguments-differ, too-many-arguments, too-many-locals
         self,
         prompt: str = Input(description="Prompt", default=""),
         system_prompt: str = Input(
-            description="System prompt to send to the model. This is prepended to the prompt and helps guide system behavior. Ignored for non-chat models.",
+            description="System prompt to send to the model. This is prepended to "
+            "the prompt and helps guide system behavior. Ignored for non-chat models.",
             default="You are a helpful assistant.",
         ),
         min_tokens: int = Input(
@@ -208,21 +211,28 @@ class Predictor(BasePredictor):
             default=0.6,
         ),
         top_p: float = Input(
-            description="A probability threshold for generating the output. If < 1.0, only keep the top tokens with cumulative probability >= top_p (nucleus filtering). Nucleus filtering is described in Holtzman et al. (http://arxiv.org/abs/1904.09751).",
+            description="A probability threshold for generating the output. If < 1.0, only keep "
+            "the top tokens with cumulative probability >= top_p (nucleus filtering). "
+            "Nucleus filtering is described in Holtzman et al. (http://arxiv.org/abs/1904.09751).",
             default=0.9,
         ),
         top_k: int = Input(
-            description="The number of highest probability tokens to consider for generating the output. If > 0, only keep the top k tokens with highest probability (top-k filtering).",
+            description="The number of highest probability tokens to consider for generating "
+            "the output. If > 0, only keep the top k tokens with highest probability "
+            "(top-k filtering).",
             default=50,
         ),
         presence_penalty: float = Input(description="Presence penalty", default=0.0),
         frequency_penalty: float = Input(description="Frequency penalty", default=0.0),
         stop_sequences: str = Input(
-            description="A comma-separated list of sequences to stop generation at. For example, '<end>,<stop>' will stop generation at the first instance of 'end' or '<stop>'.",
+            description="A comma-separated list of sequences to stop generation at. "
+            "For example, '<end>,<stop>' will stop generation at the first instance of "
+            "'end' or '<stop>'.",
             default=None,
         ),
         prompt_template: str = Input(
-            description="A template to format the prompt with. If not provided, the default prompt template will be used.",
+            description="A template to format the prompt with. If not provided, "
+            "the default prompt template will be used.",
             default=None,
         ),
     ) -> ConcatenateIterator[str]:
@@ -253,6 +263,7 @@ class Predictor(BasePredictor):
                     messages, tokenize=False, add_generation_prompt=True
                 )
         elif system_prompt:
+            # pylint: disable=no-member
             self.log(
                 "Warning: ignoring system prompt because no chat template was configured"
             )
@@ -294,5 +305,6 @@ class Predictor(BasePredictor):
 
             start = len(text)
 
+        # pylint: disable=no-member
         self.log(f"Generation took {time.time() - start:.2f}s")
         self.log(f"Formatted prompt: {prompt}")

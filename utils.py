@@ -10,16 +10,18 @@ async def resolve_model_path(url_or_local_path: str) -> str:
     Resolves the model path, downloading if necessary.
 
     Args:
-        url_or_local_path (str): URL to the tarball or local path to a directory containing the model artifacts.
+        url_or_local_path (str): URL to the tarball or local path to a
+        directory containing the model artifacts.
 
     Returns:
         str: Path to the directory containing the model artifacts.
     """
 
     parsed_url = urlparse(url_or_local_path)
-    if parsed_url.scheme == "http" or parsed_url.scheme == "https":
+    if parsed_url.scheme in ["http", "https"]:
         return await download_tarball(url_or_local_path)
-    elif parsed_url.scheme == "file" or parsed_url.scheme == "":
+
+    if parsed_url.scheme in ["file", ""]:
         if not os.path.exists(parsed_url.path):
             raise ValueError(
                 f"E1000: The provided local path '{parsed_url.path}' does not exist."
@@ -34,8 +36,7 @@ async def resolve_model_path(url_or_local_path: str) -> str:
             "To minimize boot time, store model assets externally on Replicate."
         )
         return url_or_local_path
-    else:
-        raise ValueError(f"E1000: Unsupported model path scheme: {parsed_url.scheme}")
+    raise ValueError(f"E1000: Unsupported model path scheme: {parsed_url.scheme}")
 
 
 async def download_tarball(url: str) -> str:
