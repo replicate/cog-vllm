@@ -1,0 +1,14 @@
+[MESSAGES CONTROL]
+disable=C0114,  # Missing module docstring
+        E0611,  # No name in module
+        W0201,  # Attribute defined outside init
+        C0116,  # Missing function docstring
+        W0621,  # Redefined outer name
+        E0401,  # Import error
+        R0903,  # Too few public methods
+        R0913,  # Too many arguments
+        R0914,  # Too many local variables
+        C0115,  # Missing class docstring
+        
+[REPORTS]
+output-format=colorized
