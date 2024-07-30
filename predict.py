@@ -21,6 +21,49 @@ SYSTEM_PROMPT = "You are a helpful assistant."
 
 class PredictorConfig(NamedTuple):
     prompt_template: Optional[str] = None
+    engine_args: Optional[dict] = None
+
+
+class UserError(Exception):
+    pass
+
+
+class TritonError(Exception):
+    pass
+
+
+def format_prompt(
+    prompt: str, prompt_template: str, system_prompt: Optional[str]
+) -> str:
+    if not prompt_template:
+        prompt_template = "{prompt}"
+    if prompt and "{prompt}" not in prompt_template:
+        raise UserError(
+            "E1003 BadPromptTemplate: You have submitted both a prompt and a prompt template that doesn't include '{prompt}'."
+            "Your prompt would not be used. "
+            "If don't want to use formatting, use your full prompt for the prompt argument and set prompt_template to '{prompt}'."
+        )
+    try:
+        return prompt_template.format(
+            system_prompt=system_prompt or "",
+            prompt=prompt,
+        )
+    except (ValueError, KeyError, IndexError) as e:
+        # sometimes people put the prompt in prompt_template
+        if len(prompt_template) > len(prompt):
+            raise UserError(
+                "E1004 PromptTemplateError: Prompt template must be a valid python format spec. "
+                "Did you submit your prompt as `prompt_template` instead of `prompt`? "
+                'If you want finer control over templating, set prompt_template to `"{prompt}"` to disable formatting. '
+                "You can't put JSON in prompt_template, because braces will be parsed as a python format string. "
+                f"Detail: {repr(e)}"
+            )
+        # most common case is "unmatched '{' in format spec",
+        # but IndexError/KeyError and other formatting errors can happen
+        # str(KeyError) is only the missing key which can be confusing
+        raise UserError(
+            f"E1004 PromptTemplateError: Prompt template must be a valid python format spec: {repr(e)}"
+        )
 
 
 class UserError(Exception):
@@ -85,6 +128,11 @@ class Predictor(BasePredictor):
                 os.path.join(weights, "predictor_config.json"), "r", encoding="utf-8"
             ) as f:
                 config = json.load(f)
+                print(f"Config loaded: {config}")
+                print(
+                    f"Config loaded: {config}"
+                )  # Debug print to check config contents
+
             self.config = PredictorConfig(
                 **config
             )  # pylint: disable=attribute-defined-outside-init
@@ -96,15 +144,27 @@ class Predictor(BasePredictor):
         for key, value in self.config._asdict().items():
             print(f"{key}: {value}")
 
-        engine_args = AsyncEngineArgs(
-            dtype="auto",
-            tensor_parallel_size=max(torch.cuda.device_count(), 1),
-            model=weights,
-        )
+        engine_args = self.config.engine_args or {}
+        engine_args["model"] = weights
 
-        self.engine = AsyncLLMEngine.from_engine_args(
-            engine_args
-        )  # pylint: disable=attribute-defined-outside-init
+        if "dtype" not in engine_args:
+            engine_args["dtype"] = "auto"
+        if "tensor_parallel_size" not in engine_args:
+            engine_args["tensor_parallel_size"] = max(torch.cuda.device_count(), 1)
+
+        engine_args = AsyncEngineArgs(**engine_args)
+
+        try:
+            self.engine = AsyncLLMEngine.from_engine_args(
+                engine_args
+            )  # pylint: disable=attribute-defined-outside-init
+        except (Exception, TypeError) as e:
+            if isinstance(e, TypeError):
+                print(f"E1201 UnexpectedEngineArg:{e}")
+                raise e
+            else:
+                print(f"E1200 VLLMUnknownError: {e}")
+                raise e
 
         self.tokenizer = (
             self.engine.engine.tokenizer.tokenizer
