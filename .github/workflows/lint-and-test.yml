@@ -1,0 +1,37 @@
+name: CI
+
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+# Ensure only one workflow instance runs at a time. For branches other than the
+# default branch, cancel the pending jobs in the group. For the default branch,
+# queue them up. This avoids cancelling jobs that are in the middle of deploying
+# to production.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != format('refs/heads/{0}', github.event.repository.default_branch) }}
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install dependencies  
+        run: pip install -r requirements-dev.txt
+      - name: Run pylint
+        run: |
+          pylint --recursive y tests/**/*.py
+          pylint --recursive y ./*.py
+  
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Run unit tests
+        run: pytest tests/unit

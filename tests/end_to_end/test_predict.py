@@ -3,6 +3,7 @@ import subprocess
 
 def test_predict():
     # Mirror of https://huggingface.co/EleutherAI/pythia-70m
+    # pylint: disable=line-too-long
     weights_url = "https://replicate.delivery/czjl/HUTgHv0M6FbnJxzkbe7Ly1fN19tabwYOZTFLuJld3f7MifpLB/model.tar"
 
     # Run the cog predict command and capture the output

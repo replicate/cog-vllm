@@ -3,6 +3,7 @@ import json
 import tarfile
 import time
 from collections import namedtuple
+from dataclasses import asdict
 
 import httpx
 import tqdm
@@ -60,7 +61,12 @@ def train(
         default="*.gguf",
     ),
     prompt_template: str = Input(
-        description="Prompt template. This is a Jinja2 template that overrides the HuggingFace tokenizer configuration. If this is set to None and nothing is configured on HuggingFace, no formatting is applied. To override HuggingFace configuration, set it to the string `{{messages[0]['content']}}`.",
+        description="""
+        Prompt template. This is a Jinja2 template that overrides the 
+        HuggingFace tokenizer configuration. If this is set to None and nothing 
+        is configured on HuggingFace, no formatting is applied. 
+        To override HuggingFace configuration, set it to the string 
+        `{{messages[0]['content']}}`.""",
         default=None,
     ),
 ) -> TrainingOutput:
@@ -111,7 +117,8 @@ def train(
     weights = Path("model.tar")
     with tarfile.open(name=str(weights), mode="w:") as tar:
         # Add predictor_config.json
-        predictor_config_data = json.dumps(config._asdict()).encode("utf-8")
+
+        predictor_config_data = json.dumps(asdict(config)).encode("utf-8")
         tar_info = tarfile.TarInfo("predictor_config.json")
         tar_info.mtime = int(time.time())
         tar_info.size = len(predictor_config_data)
