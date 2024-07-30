@@ -123,30 +123,10 @@ class Predictor(BasePredictor):
             )
 
         weights = await resolve_model_path(str(weights))
+        self.config = self.load_config(weights)
 
-        if os.path.exists(os.path.join(weights, "predictor_config.json")):
-            try:
-                print("Loading predictor_config.json")
-                with open(
-                    os.path.join(weights, "predictor_config.json"),
-                    "r",
-                    encoding="utf-8",
-                ) as f:
-                    config = json.load(f)
-                # pylint: disable=attribute-defined-outside-init
-                self.config = PredictorConfig(**config)
-            except Exception as e:
-                raise UserError(f"E1202 InvalidPredictorConfig: {e}") from e
-
-        else:
-            # pylint: disable=attribute-defined-outside-init
-            self.config = PredictorConfig()
-
-        pprint(self.config)
         engine_args = self.config.engine_args or {}
-
         engine_args["model"] = weights
-
         if "dtype" not in engine_args:
             engine_args["dtype"] = "auto"
         if "tensor_parallel_size" not in engine_args:
@@ -308,3 +288,46 @@ class Predictor(BasePredictor):
         # pylint: disable=no-member
         self.log(f"Generation took {time.time() - start:.2f}s")
         self.log(f"Formatted prompt: {prompt}")
+
+    def load_config(self, weights: str) -> PredictorConfig:
+        """
+        Load the predictor configuration from the specified weights directory or the current directory.
+
+        Load `predictor_config.json` from the weights directory or current directory. Return a default
+        PredictorConfig object if not found or an error occurs.
+
+        Priority:
+        1. Load `predictor_config.json` from the specified weights directory.
+        2. If not found, load `predictor_config.json` from the current directory.
+        3. If not found or an error occurs, return a default PredictorConfig object.
+
+        Args:
+            weights (str): The path to the weights directory.
+
+        Returns:
+            PredictorConfig: The loaded predictor configuration.
+        """
+        if os.path.exists(os.path.join(weights, "predictor_config.json")):
+            predictor_config_path = os.path.join(weights, "predictor_config.json")
+        elif os.path.exists("./predictor_config.json"):
+            predictor_config_path = "./predictor_config.json"
+        else:
+            predictor_config_path = None
+        if predictor_config_path:
+            try:
+                print("Loading predictor_config.json")
+                with open(
+                    predictor_config_path,
+                    "r",
+                    encoding="utf-8",
+                ) as f:
+                    config = json.load(f)
+                # pylint: disable=attribute-defined-outside-init
+                config = PredictorConfig(**config)
+            except Exception as e:
+                raise UserError(f"E1202 InvalidPredictorConfig: {e}") from e
+
+        else:
+            config = PredictorConfig()
+        pprint(config)
+        return config
