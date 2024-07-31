@@ -65,9 +65,20 @@ jobs:
           sudo chmod +x /usr/local/bin/cog
 
       - name: Push to Replicate
-        env:
-          REPLICATE_API_TOKEN_ORG_REPLICATE_INTERNAL: ${{ secrets.REPLICATE_API_TOKEN_ORG_REPLICATE_INTERNAL }}
         run: |
           cog push r8.im/replicate/vllm
-          export REPLICATE_API_TOKEN=$REPLICATE_API_TOKEN_ORG_REPLICATE_INTERNAL
+
+      - name: Setup Cog
+        uses: replicate/setup-cog@v2
+        with:
+          token: ${{ secrets.REPLICATE_API_TOKEN_ORG_REPLICATE_INTERNAL }}
+
+      - name: Install Cog
+        run: |
+          COG_URL="https://github.com/replicate/cog/releases/download/v0.10.0-alpha20/cog_$(uname -s)_$(uname -m)"
+          sudo curl -o /usr/local/bin/cog -L "$COG_URL"
+          sudo chmod +x /usr/local/bin/cog
+
+      - name: Push to replicate-internal
+        run: |
           cog push r8.im/replicate-internal/vllm
