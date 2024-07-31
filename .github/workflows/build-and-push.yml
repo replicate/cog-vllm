@@ -65,7 +65,7 @@ jobs:
           sudo chmod +x /usr/local/bin/cog
 
       - name: Push to Replicate
-        with:
+        env:
           REPLICATE_API_TOKEN_ORG_REPLICATE_INTERNAL: ${{ secrets.REPLICATE_API_TOKEN_ORG_REPLICATE_INTERNAL }}
         run: |
           cog push r8.im/replicate/vllm
