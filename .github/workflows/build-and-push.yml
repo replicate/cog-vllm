@@ -57,6 +57,10 @@ jobs:
         uses: replicate/setup-cog@v2
         with:
           token: ${{ secrets.REPLICATE_API_TOKEN }}
+        run: |
+          COG_URL="https://github.com/replicate/cog/releases/download/v0.10.0-alpha20/cog_$(uname -s)_$(uname -m)"
+          sudo curl -o /usr/local/bin/cog -L "$COG_URL"
+          sudo chmod +x /usr/local/bin/cog
 
       - name: Push to Replicate
         run: cog push r8.im/replicate/vllm
