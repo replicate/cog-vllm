@@ -1,8 +1,13 @@
-name: CI
+name: Build and Push to Replicate
 
 
 on:
   workflow_dispatch:
+    inputs:
+      git_branch:
+        description: 'Enter the git branch name to check out and push'
+        required: true
+        default: 'main'
 
 # Ensure only one workflow instance runs at a time. For branches other than the
 # default branch, cancel the pending jobs in the group. For the default branch,
@@ -34,6 +39,7 @@ jobs:
         run: pip install -r requirements-dev.txt
       - name: Run unit tests
         run: pytest tests/unit
+
   build-and-push:
     name: Build and push
     needs: [lint, unit-tests]
@@ -42,14 +48,16 @@ jobs:
       id-token: 'write'
     runs-on: ubuntu-latest-16-cores
     steps:
-      - uses: actions/checkout@v3
-      - name: Install Cog
-        run: |
-          sudo curl -o /usr/local/bin/cog -L "https://github.com/replicate/cog/releases/latest/download/cog_$(uname -s)_$(uname -m)"
-          sudo chmod +x /usr/local/bin/cog
-      - name: Build and push
-        env:
-          REPLICATE_API_TOKEN: ${{ secrets.REPLICATE_API_TOKEN }}
-        run: |
-          cog build
-          cog push r8.im/replicate/vllm
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_branch }}
+
+      - name: Setup Cog
+        uses: replicate/setup-cog@v2
+        with:
+          token: ${{ secrets.REPLICATE_API_TOKEN }}
+
+      - name: Push to Replicate
+        run: cog push r8.im/replicate/vllm
+          
