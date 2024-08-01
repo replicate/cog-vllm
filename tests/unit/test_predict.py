@@ -135,42 +135,52 @@ async def test_setup_with_invalid_predictor_config():
 
 @pytest.mark.asyncio
 async def test_predict(mock_dependencies):
-    class MockResult: # pylint: disable=too-few-public-methods
-        """
-        Use this to mock the result object that the engine returns.
-        """
-        def __init__(self, text):
-            self.outputs = [MagicMock(text=text)]
 
-    # Define an async generator function
-    async def mock_generate(*args, **kwargs): # pylint: disable=unused-argument
-        yield MockResult("Generated text")
+    with patch('predict.cog.emit_metric') as mock_emit_metric:
+        class MockOutput:
+            def __init__(self, text):
+                self.text = text
+                self.token_ids = [4, 5, 6]  # Generated tokens
 
-    mock_dependencies["engine"].generate = mock_generate
+        class MockResult:
+            def __init__(self, text):
+                self.outputs = [MockOutput(text)]
+                self.prompt_token_ids = [1, 2, 3]  # Input tokens
 
-    predictor = Predictor()
-    predictor.log = MagicMock()
-    with patch.object(Predictor, 'setup') as mock_setup:
-        def setup_side_effect(*args): # pylint: disable=unused-argument
-            predictor.engine = mock_dependencies["engine"]
-            predictor.prompt_template = None
-            predictor.config = PredictorConfig()
-        mock_setup.side_effect = setup_side_effect
-        await predictor.setup("dummy_weights")
 
-    # Mock the tokenizer
-    predictor.tokenizer = MagicMock()
-    predictor.tokenizer.chat_template = None
-    predictor.tokenizer.eos_token_id = 0
+        # Define an async generator function
+        async def mock_generate(*args, **kwargs): # pylint: disable=unused-argument
+            yield MockResult("Generated text")
 
-    # Call the predict method
-    result = predictor.predict(
-        prompt="Test prompt", prompt_template=MockInput(default=None)
-    )
+        mock_dependencies["engine"].generate = mock_generate
 
-    # Consume the async generator
-    texts = []
-    async for item in result:
-        texts.append(item)
+        predictor = Predictor()
+        predictor.log = MagicMock()
+        with patch.object(Predictor, 'setup') as mock_setup:
+            def setup_side_effect(*args): # pylint: disable=unused-argument
+                predictor.engine = mock_dependencies["engine"]
+                predictor.prompt_template = None
+                predictor.config = PredictorConfig()
+                predictor._testing = False # pylint: disable=protected-access
+            mock_setup.side_effect = setup_side_effect
+            await predictor.setup("dummy_weights")
 
-    assert texts == ["Generated text"]
+            # Mock the tokenizer
+            predictor.tokenizer = MagicMock()
+            predictor.tokenizer.chat_template = None
+            predictor.tokenizer.eos_token_id = 0
+
+            # Call the predict method
+            result = predictor.predict(
+                prompt="Test prompt", prompt_template=MockInput(default=None)
+            )
+
+            # Consume the async generator
+            texts = []
+            async for item in result:
+                texts.append(item)
+
+            assert texts == ["Generated text"]
+            # Assert that emit_metric was called with the expected arguments
+            mock_emit_metric.assert_any_call("input_token_count", 3)
+            mock_emit_metric.assert_any_call("output_token_count", 3)

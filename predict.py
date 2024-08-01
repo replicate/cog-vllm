@@ -10,6 +10,7 @@ import inspect
 
 import jinja2
 import torch  # pylint: disable=import-error
+import cog  # pylint: disable=import-error
 from cog import BasePredictor, ConcatenateIterator, Input
 from vllm import AsyncLLMEngine
 from vllm.engine.arg_utils import AsyncEngineArgs  # pylint: disable=import-error
@@ -281,7 +282,12 @@ class Predictor(BasePredictor):
             )
 
         request_id = uuid4().hex
-        generator = self.engine.generate(prompt, sampling_params, request_id)
+
+        generator = self.engine.generate(
+            prompt,
+            sampling_params,
+            request_id,
+        )
         start = 0
 
         async for result in generator:
@@ -301,6 +307,11 @@ class Predictor(BasePredictor):
         # pylint: disable=no-member
         self.log(f"Generation took {time.time() - start:.2f}s")
         self.log(f"Formatted prompt: {prompt}")
+
+        if not self._testing:
+            # pylint: disable=no-member, undefined-loop-variable
+            cog.emit_metric("input_token_count", len(result.prompt_token_ids))
+            cog.emit_metric("output_token_count", len(result.outputs[0].token_ids))
 
     def load_config(self, weights: str) -> PredictorConfig:
         """
