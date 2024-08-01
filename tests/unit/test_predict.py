@@ -73,12 +73,21 @@ def mock_predictor_config():
 async def test_setup_with_predictor_config(mock_dependencies, mock_predictor_config):
     with patch("builtins.open", mock_open(read_data=json.dumps(mock_predictor_config))):
         with patch("os.path.exists", return_value=True):
-            predictor = Predictor()
-            await predictor.setup("dummy_weights")
+            with patch.object(Predictor, 'predict') as mock_predict:
+                # Create a mock async generator
+                async def mock_generator():
+                    yield "test"
+                mock_predict.return_value = mock_generator()
+
+                predictor = Predictor()
+                await predictor.setup("dummy_weights")
+
+
 
     assert isinstance(predictor.config, PredictorConfig)
     assert predictor.config.prompt_template == mock_predictor_config["prompt_template"]
-    # assert predictor.config.engine_args == mock_predictor_config["engine_args"]
+    mock_predict.assert_called_once()
+    assert hasattr(predictor, 'prompt_template')
 
     mock_dependencies["engine_args"].assert_called_once_with(
         model="/path/to/weights", dtype="float16", tensor_parallel_size=2
@@ -88,12 +97,22 @@ async def test_setup_with_predictor_config(mock_dependencies, mock_predictor_con
 @pytest.mark.asyncio
 async def test_setup_without_predictor_config(mock_dependencies):
     with patch("os.path.exists", return_value=False):
-        predictor = Predictor()
-        await predictor.setup("dummy_weights")
+        with patch.object(Predictor, 'predict') as mock_predict:
+            # Create a mock async generator
+            async def mock_generator():
+                yield "test"
+            mock_predict.return_value = mock_generator()
+
+            predictor = Predictor()
+            await predictor.setup("dummy_weights")
+
 
     assert isinstance(predictor.config, PredictorConfig)
     assert predictor.config.prompt_template is None
     assert predictor.config.engine_args == {}
+    mock_predict.assert_called_once()
+    assert hasattr(predictor, 'prompt_template')
+
 
     mock_dependencies["engine_args"].assert_called_once_with(
         model="/path/to/weights", dtype="auto", tensor_parallel_size=1
@@ -130,8 +149,14 @@ async def test_predict(mock_dependencies):
     mock_dependencies["engine"].generate = mock_generate
 
     predictor = Predictor()
-    predictor.log = MagicMock()  # Mock the log method
-    await predictor.setup("dummy_weights")
+    predictor.log = MagicMock()
+    with patch.object(Predictor, 'setup') as mock_setup:
+        def setup_side_effect(*args): # pylint: disable=unused-argument
+            predictor.engine = mock_dependencies["engine"]
+            predictor.prompt_template = None
+            predictor.config = PredictorConfig()
+        mock_setup.side_effect = setup_side_effect
+        await predictor.setup("dummy_weights")
 
     # Mock the tokenizer
     predictor.tokenizer = MagicMock()
