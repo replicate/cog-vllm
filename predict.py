@@ -7,7 +7,7 @@ from uuid import uuid4
 from dataclasses import dataclass, field
 from pprint import pprint
 import inspect
-
+import random
 import jinja2
 import torch  # pylint: disable=import-error
 import cog  # pylint: disable=import-error
@@ -228,8 +228,14 @@ class Predictor(BasePredictor):
             "the default prompt template will be used.",
             default=None,
         ),
+        seed: int = Input(
+            description="Random seed. Leave blank to randomize the seed.",
+            default=None,
+        ),
     ) -> ConcatenateIterator[str]:
         start = time.time()
+        if not seed:
+            seed = int(random.randint(0, 100000))
 
         if prompt_template or self.prompt_template:
             prompt_template = prompt_template or self.prompt_template
@@ -273,6 +279,7 @@ class Predictor(BasePredictor):
             frequency_penalty=frequency_penalty,
             presence_penalty=presence_penalty,
             use_beam_search=False,
+            seed=seed,
         )
         if isinstance(stop_sequences, str) and stop_sequences:
             sampling_params.stop = stop_sequences.split(",")
@@ -307,6 +314,10 @@ class Predictor(BasePredictor):
         # pylint: disable=no-member
         self.log(f"Generation took {time.time() - start:.2f}s")
         self.log(f"Formatted prompt: {prompt}")
+        self.log(f"Random seed used: `{seed}`\n")
+        self.log(
+            "Note: Random seed will not impact output if greedy decoding is used.\n"
+        )
 
         if not self._testing:
             # pylint: disable=no-member, undefined-loop-variable

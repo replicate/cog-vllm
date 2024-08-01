@@ -21,7 +21,6 @@ def test_predict():
 
         with open(config_filename, "w", encoding="utf-8") as temp_config:
             json.dump(predictor_config, temp_config, indent=4)
-
         weights_url = "https://weights.replicate.delivery/default/internal-testing/EleutherAI/pythia-70m/model.tar"  # pylint: disable=line-too-long
 
         result = subprocess.run(
