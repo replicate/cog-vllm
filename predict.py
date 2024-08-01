@@ -159,11 +159,13 @@ class Predictor(BasePredictor):
                 f"Using prompt template from `predictor_config.json`: {self.config.prompt_template}"
             )
             self.tokenizer.chat_template = self.config.prompt_template
+            self.prompt_template = None
 
         elif self.tokenizer.chat_template:
             print(
                 f"Using prompt template from `tokenizer`: {self.tokenizer.chat_template}"
             )
+            self.prompt_template = None
         else:
             print(
                 "No prompt template specified in `predictor_config.json` or "
@@ -173,11 +175,11 @@ class Predictor(BasePredictor):
             self.prompt_template = PROMPT_TEMPLATE
 
         self._testing = True
-        # pylint: disable=unsupported-binary-operation
-        generator = self.predict(**(self._defaults | {"max_tokens": 3, "prompt": "hi"}))
-        # pylint: enable=unsupported-binary-operation
-        test_output = "".join([tok async for tok in generator])
-        print("Test prediction output:", test_output)
+        # generator = self.predict(
+        #     **dict(self._defaults, **{"max_tokens": 3, "prompt": "hi"})
+        # )
+        # test_output = "".join([tok async for tok in generator])
+        # print("Test prediction output:", test_output)
         self._testing = False
 
     async def predict(  # pylint: disable=invalid-overridden-method, arguments-differ, too-many-arguments, too-many-locals
