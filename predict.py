@@ -168,7 +168,16 @@ class Predictor(BasePredictor):
                 "No prompt template specified in `predictor_config.json` or "
                 f"`tokenizer`, defaulting to: {PROMPT_TEMPLATE}"
             )
-            self.tokenizer.chat_template = PROMPT_TEMPLATE
+            self.tokenizer.chat_template = None
+            self.prompt_template = PROMPT_TEMPLATE
+
+        self._testing = True
+        # pylint: disable=unsupported-binary-operation
+        generator = self.predict(**(self._defaults | {"max_tokens": 3, "prompt": "hi"}))
+        # pylint: enable=unsupported-binary-operation
+        test_output = "".join([tok async for tok in generator])
+        print("Test prediction output:", test_output)
+        self._testing = False
 
     async def predict(  # pylint: disable=invalid-overridden-method, arguments-differ, too-many-arguments, too-many-locals
         self,
@@ -218,7 +227,8 @@ class Predictor(BasePredictor):
     ) -> ConcatenateIterator[str]:
         start = time.time()
 
-        if prompt_template:
+        if prompt_template or self.prompt_template:
+            prompt_template = prompt_template or self.prompt_template
             prompt = format_prompt(
                 prompt=prompt,
                 prompt_template=prompt_template,
@@ -332,3 +342,9 @@ class Predictor(BasePredictor):
             config = PredictorConfig()
         pprint(config)
         return config
+
+    _defaults = {
+        key: param.default.default
+        for key, param in inspect.signature(predict).parameters.items()
+        if hasattr(param.default, "default")
+    }
