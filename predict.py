@@ -66,7 +66,7 @@ def format_prompt(
     
 class Predictor(BasePredictor):
     async def setup(self):
-        weights = "https://weights.replicate.delivery/default/hf/meta-llama/llama-3.1-405b-instruct-fp8-revised3.tar"
+        weights = "https://weights.replicate.delivery/default/hf/meta-llama/llama-3.1-405b-fp8.tar"
 
         weights = await resolve_model_path(str(weights))
 
@@ -95,6 +95,7 @@ class Predictor(BasePredictor):
             #gpu_memory_utilization=0.8,
             max_model_len=4096,
             enable_prefix_caching=True,
+            enable_chunked_prefill=False, # required for prefix caching
         )
 
         self.engine = AsyncLLMEngine.from_engine_args(
