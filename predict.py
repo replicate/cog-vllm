@@ -222,6 +222,11 @@ class Predictor(BasePredictor):
                 len(result.outputs) == 1
             ), "Expected exactly one output from generation request."
 
+            if result.outputs[0].finish_reason == "length" and start != 0:
+                # hard to find the max length though, sorry
+                raise UserError(
+                    "E1002 PromptTooLong: Prompt length exceeds maximum input length"
+                )
             text = result.outputs[0].text
 
             # Normalize text by removing any incomplete surrogate pairs (common with emojis)
