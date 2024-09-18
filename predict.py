@@ -2,32 +2,54 @@ import json
 import os
 import time
 from typing import NamedTuple, Optional
-from uuid import uuid4
+from openai import AsyncOpenAI
+import httpx
 
-# import jinja2
 # import torch
 from cog import BasePredictor, ConcatenateIterator, Input
-# from vllm import AsyncLLMEngine
-# from vllm.engine.arg_utils import AsyncEngineArgs
-# from vllm.sampling_params import SamplingParams
 
-import prompt_templates
 from utils import resolve_model_path
 
-PROMPT_TEMPLATE = prompt_templates.COMPLETION  # Change this for instruct models
 
 SYSTEM_PROMPT = "You are a helpful assistant."
 
+TRITON_START_TIMEOUT_MINUTES = 5
+TRITON_TIMEOUT = 120
 
 class PredictorConfig(NamedTuple):
     prompt_template: Optional[str] = None
 
 
 class Predictor(BasePredictor):
+    async def start_vllm(self, model: str, args: dict) -> bool:
+        client = httpx.Client()
+        cmd = [f"{os.environ['PYTHON_VLLM']}/bin/vllm", "serve", model]
+        for k, v in args.items():
+            cmd.extend(("--" + k, v))
+        self.proc = subprocess.Popen(cmd)
+        # Health check Triton until it is ready or for 5 minutes
+        for i in range(TRITON_START_TIMEOUT_MINUTES * 60):
+            try:
+                response = await client.get(
+                    "http://localhost:8000/v1/completions"
+                )
+                if response.status_code == 200:
+                    print("VLLM is ready.")
+                    return True
+            except httpx.RequestError:
+                pass
+            await asyncio.sleep(1)
+        print(f"VLLM was not ready within {TRITON_START_TIMEOUT_MINUTES} minutes (exit code: {self.proc.poll()})")
+        self.proc.terminate()
+        await asyncio.sleep(0.001)
+        self.proc.kill()
+        return False
+    
     async def setup(
         self, weights: str
     ):  # pylint: disable=invalid-overridden-method, signature-differs
 
+        self.client = 
         if not weights:
             raise ValueError(
                 "Weights must be provided. "
@@ -37,57 +59,22 @@ class Predictor(BasePredictor):
             )
 
         weights = await resolve_model_path(str(weights))
-
-        if os.path.exists(os.path.join(weights, "predictor_config.json")):
-            print("Loading predictor_config.json")
-            with open(
-                os.path.join(weights, "predictor_config.json"), "r", encoding="utf-8"
-            ) as f:
-                config = json.load(f)
-            self.config = PredictorConfig(
-                **config
-            )  # pylint: disable=attribute-defined-outside-init
-
-        else:
-            self.config = PredictorConfig()
-
-        print("Predictor Configuration:")
-        for key, value in self.config._asdict().items():
-            print(f"{key}: {value}")
-
-        engine_args = AsyncEngineArgs(
-            dtype="auto",
-            tensor_parallel_size=max(torch.cuda.device_count(), 1),
-            model=weights,
-            quantization="fbgemm_fp8",
-            max_model_len=4096,
+        res = self.start_vllm(
+            weights,
+            {
+                "dtype": "auto",
+                "tensor_parallel_size": max(torch.cuda.device_count(), 1),
+                "max_model_len": 4096,
+            }
         )
 
-        self.engine = AsyncLLMEngine.from_engine_args(
-            engine_args
-        )  # pylint: disable=attribute-defined-outside-init
-
-        self.tokenizer = (
-            self.engine.engine.tokenizer.tokenizer
-            if hasattr(self.engine.engine.tokenizer, "tokenizer")
-            else self.engine.engine.tokenizer
-        )  # pylint: disable=attribute-defined-outside-init
-
-        if self.config.prompt_template:
-            print(
-                f"Using prompt template from `predictor_config.json`: {self.config.prompt_template}"
-            )
-            self.tokenizer.chat_template = self.config.prompt_template
-
-        elif self.tokenizer.chat_template:
-            print(
-                f"Using prompt template from `tokenizer`: {self.tokenizer.chat_template}"
-            )
-        else:
-            print(
-                f"No prompt template specified in `predictor_config.json` or `tokenizer`, defaulting to: {PROMPT_TEMPLATE}"
-            )
-            self.tokenizer.chat_template = PROMPT_TEMPLATE
+        
+        self.client = AsyncOpenAI(
+            api_key="EMPTY",
+            base_url="http://localhost:8000/v1"
+        )
+        models = self.client.models.list()
+        self.model_id = models.data[0].id
 
     async def predict(  # pylint: disable=invalid-overridden-method, arguments-differ
         self,
@@ -125,64 +112,35 @@ class Predictor(BasePredictor):
     ) -> ConcatenateIterator[str]:
         start = time.time()
 
-        if self.tokenizer.chat_template:
-            system_prompt = "" if system_prompt is None else system_prompt
-            try:
-                messages = [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": prompt},
-                ]
-                prompt = self.tokenizer.apply_chat_template(
-                    messages, tokenize=False, add_generation_prompt=True
-                )
-            except jinja2.exceptions.TemplateError:
-                messages = [
-                    {"role": "user", "content": "\n\n".join([system_prompt, prompt])}
-                ]
-                prompt = self.tokenizer.apply_chat_template(
-                    messages, tokenize=False, add_generation_prompt=True
-                )
-        elif system_prompt:
-            self.log(
-                "Warning: ignoring system prompt because no chat template was configured"
+        system_prompt = "" if system_prompt is None else system_prompt
+        if isinstance(stop_sequences, str) and stop_sequences:
+            stop = stop_sequences.split(",")
+        else:
+            stop = (
+                list(stop_sequences) if isinstance(stop_sequences, list) else []
             )
-
-        sampling_params = SamplingParams(
+        chat_response = await self.client.chat.completions.create(
+            model=self.model_id,
+            echo=False,
+            n=1,
+            stream=True,
+            messages = [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt},
+            ],
             n=1,
             top_k=(-1 if (top_k or 0) == 0 else top_k),
             top_p=top_p,
+            stop=stop,
             temperature=temperature,
             min_tokens=min_tokens,
             max_tokens=max_tokens,
-            stop_token_ids=[self.tokenizer.eos_token_id],
             frequency_penalty=frequency_penalty,
             presence_penalty=presence_penalty,
             use_beam_search=False,
         )
-        if isinstance(stop_sequences, str) and stop_sequences:
-            sampling_params.stop = stop_sequences.split(",")
-        else:
-            sampling_params.stop = (
-                list(stop_sequences) if isinstance(stop_sequences, list) else []
-            )
-
-        request_id = uuid4().hex
-        generator = self.engine.generate(prompt, sampling_params, request_id)
-        start = 0
-
-        async for result in generator:
-            assert (
-                len(result.outputs) == 1
-            ), "Expected exactly one output from generation request."
-
-            text = result.outputs[0].text
-
-            # Normalize text by removing any incomplete surrogate pairs (common with emojis)
-            text = text.replace("\N{REPLACEMENT CHARACTER}", "")
-
-            yield text[start:]
-
-            start = len(text)
-
+        async for completion in stream:
+            yield completion.choices[0].text
+            
         self.log(f"Generation took {time.time() - start:.2f}s")
         self.log(f"Formatted prompt: {prompt}")
