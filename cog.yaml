@@ -6,15 +6,10 @@ build:
 
   python_version: "3.11"
 
-  #python_requirements: requirements.txt
   python_packages:
-    - jinja2
-    # - git+https://github.com/neuralmagic/nm-vllm@fbgemm-checkpoints
-    # after fbgemm merge
-    - git+https://github.com/vllm-project/vllm@c5201240a4ffb40d014845088eb218b1512899e9
-    # after new-quant-method merge
-    - git+https://github.com/huggingface/transformers@96a074fa7e2c04b904f72d9e827398d4c5f90f25
-    - accelerate
+    - vllm==0.6.1.post2
+    - openai
+    - huggingface_hub
 
 predict: "predict.py:Predictor"
 train: "train.py:train"

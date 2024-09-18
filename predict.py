@@ -4,12 +4,12 @@ import time
 from typing import NamedTuple, Optional
 from uuid import uuid4
 
-import jinja2
-import torch
+# import jinja2
+# import torch
 from cog import BasePredictor, ConcatenateIterator, Input
-from vllm import AsyncLLMEngine
-from vllm.engine.arg_utils import AsyncEngineArgs
-from vllm.sampling_params import SamplingParams
+# from vllm import AsyncLLMEngine
+# from vllm.engine.arg_utils import AsyncEngineArgs
+# from vllm.sampling_params import SamplingParams
 
 import prompt_templates
 from utils import resolve_model_path
