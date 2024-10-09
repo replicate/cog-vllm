@@ -49,7 +49,6 @@ class Predictor(BasePredictor):
         self, weights: str
     ):  # pylint: disable=invalid-overridden-method, signature-differs
 
-        self.client = 
         if not weights:
             raise ValueError(
                 "Weights must be provided. "
@@ -128,7 +127,6 @@ class Predictor(BasePredictor):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
             ],
-            n=1,
             top_k=(-1 if (top_k or 0) == 0 else top_k),
             top_p=top_p,
             stop=stop,
