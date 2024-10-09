@@ -5,7 +5,7 @@ from typing import NamedTuple, Optional
 from openai import AsyncOpenAI
 import httpx
 
-# import torch
+import torch
 from cog import BasePredictor, ConcatenateIterator, Input
 
 from utils import resolve_model_path

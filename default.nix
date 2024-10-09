@@ -32,6 +32,7 @@ in
       openai = true;
       huggingface-hub = true;
       vllm = false;
+      torch = true;
     };
   };
   deps.vllm-env = config.python-env.public.extendModules {

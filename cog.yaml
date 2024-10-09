@@ -10,6 +10,7 @@ build:
     - vllm==0.6.1.post2
     - openai
     - huggingface_hub
+    - torch
 
 predict: "predict.py:Predictor"
 train: "train.py:train"
