@@ -5,9 +5,12 @@ let
   mkMoreForce = lib.mkOverride 49;
 in
 {
+  options.cog.build.run = lib.mkOption {};
+  config = {
   cog.build.cog_version = "0.10.0-alpha21";
 
   python-env.pip = {
+    requirementsList = [ "vllm==0.6.1.post2" ];
     overridesList = [
       "pydantic>=2.0"
       "fastapi>0.99.0"
@@ -66,5 +69,5 @@ in
     ];
   };
   cognix.environment.PYTHON_VLLM = config.deps.vllm-env.config.public.pyEnv;
-
+  };
 }

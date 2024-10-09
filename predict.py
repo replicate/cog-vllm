@@ -15,6 +15,7 @@ SYSTEM_PROMPT = "You are a helpful assistant."
 
 TRITON_START_TIMEOUT_MINUTES = 5
 TRITON_TIMEOUT = 120
+VLLM_ENV = os.environ.get("PYTHON_VLLM", "/vllm-env")
 
 class PredictorConfig(NamedTuple):
     prompt_template: Optional[str] = None
@@ -23,7 +24,7 @@ class PredictorConfig(NamedTuple):
 class Predictor(BasePredictor):
     async def start_vllm(self, model: str, args: dict) -> bool:
         client = httpx.Client()
-        cmd = [f"{os.environ['PYTHON_VLLM']}/bin/vllm", "serve", model]
+        cmd = [f"{VLLM_ENV}/bin/vllm", "serve", model]
         for k, v in args.items():
             cmd.extend(("--" + k, v))
         self.proc = subprocess.Popen(cmd)

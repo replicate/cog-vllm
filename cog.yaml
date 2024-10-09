@@ -7,10 +7,14 @@ build:
   python_version: "3.11"
 
   python_packages:
-    - vllm==0.6.1.post2
+    # - vllm==0.6.1.post2
     - openai
     - huggingface_hub
     - torch
+    - cog==0.10.0-alpha21
+  run:
+    - curl --proto '=https' --tlsv1.2 -LsSf https://github.com/astral-sh/uv/releases/download/0.4.20/uv-installer.sh | sh
+    - /root/.cargo/bin/uv venv ./vllm-env && /root/.cargo/bin/uv pip install -p ./vllm-env setuptools vllm==0.6.1.post2
 
 predict: "predict.py:Predictor"
 train: "train.py:train"
