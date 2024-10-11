@@ -1,11 +1,13 @@
 import json
 import os
 import time
+import subprocess
+import asyncio
 from typing import NamedTuple, Optional
 from openai import AsyncOpenAI
 import httpx
 
-import torch
+# import torch
 from cog import BasePredictor, ConcatenateIterator, Input
 
 from utils import resolve_model_path
@@ -23,16 +25,16 @@ class PredictorConfig(NamedTuple):
 
 class Predictor(BasePredictor):
     async def start_vllm(self, model: str, args: dict) -> bool:
-        client = httpx.Client()
-        cmd = [f"{VLLM_ENV}/bin/vllm", "serve", model]
+        client = httpx.AsyncClient()
+        cmd = [f"{VLLM_ENV}/bin/vllm", "serve", model, "--disable-log-requests"]
         for k, v in args.items():
-            cmd.extend(("--" + k, v))
+            cmd.extend(("--" + k, str(v)))
         self.proc = subprocess.Popen(cmd)
         # Health check Triton until it is ready or for 5 minutes
         for i in range(TRITON_START_TIMEOUT_MINUTES * 60):
             try:
                 response = await client.get(
-                    "http://localhost:8000/v1/completions"
+                    "http://localhost:8000/health"
                 )
                 if response.status_code == 200:
                     print("VLLM is ready.")
@@ -59,11 +61,11 @@ class Predictor(BasePredictor):
             )
 
         weights = await resolve_model_path(str(weights))
-        res = self.start_vllm(
+        res = await self.start_vllm(
             weights,
             {
                 "dtype": "auto",
-                "tensor_parallel_size": max(torch.cuda.device_count(), 1),
+                "tensor_parallel_size": 1,
                 "max_model_len": 4096,
             }
         )
@@ -73,7 +75,7 @@ class Predictor(BasePredictor):
             api_key="EMPTY",
             base_url="http://localhost:8000/v1"
         )
-        models = self.client.models.list()
+        models = await self.client.models.list()
         self.model_id = models.data[0].id
 
     async def predict(  # pylint: disable=invalid-overridden-method, arguments-differ
@@ -119,27 +121,28 @@ class Predictor(BasePredictor):
             stop = (
                 list(stop_sequences) if isinstance(stop_sequences, list) else []
             )
+        # TODO: figure out how to add top_k, min_tokens, frequency_penalty, presence_penalty, beam search
         chat_response = await self.client.chat.completions.create(
             model=self.model_id,
-            echo=False,
+            # echo=False,
             n=1,
             stream=True,
             messages = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
             ],
-            top_k=(-1 if (top_k or 0) == 0 else top_k),
+            # top_k=(-1 if (top_k or 0) == 0 else top_k),
             top_p=top_p,
             stop=stop,
             temperature=temperature,
-            min_tokens=min_tokens,
+            # min_tokens=min_tokens,
             max_tokens=max_tokens,
-            frequency_penalty=frequency_penalty,
-            presence_penalty=presence_penalty,
-            use_beam_search=False,
+            # frequency_penalty=frequency_penalty,
+            # presence_penalty=presence_penalty,
+            # use_beam_search=False,
         )
-        async for completion in stream:
-            yield completion.choices[0].text
+        async for completion in chat_response:
+            yield completion.choices[0].delta.content
             
         self.log(f"Generation took {time.time() - start:.2f}s")
         self.log(f"Formatted prompt: {prompt}")
