@@ -1,4 +1,3 @@
-# pylint: disable=missing-module-docstring, no-name-in-module, attribute-defined-outside-init
 import json
 import os
 import time
@@ -9,12 +8,12 @@ from pprint import pprint
 import inspect
 import random
 import jinja2
-import torch  # pylint: disable=import-error
-import cog  # pylint: disable=import-error
-from cog import BasePredictor, ConcatenateIterator, Input
+import torch
+import cog
+from cog import BasePredictor, AsyncConcatenateIterator, Input
 from vllm import AsyncLLMEngine
-from vllm.engine.arg_utils import AsyncEngineArgs  # pylint: disable=import-error
-from vllm.sampling_params import SamplingParams  # pylint: disable=import-error
+from vllm.engine.arg_utils import AsyncEngineArgs
+from vllm.sampling_params import SamplingParams
 
 import prompt_templates
 from utils import resolve_model_path
