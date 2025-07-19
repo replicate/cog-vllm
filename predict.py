@@ -131,10 +131,7 @@ class Predictor(BasePredictor):
         engine_args = AsyncEngineArgs(**engine_args)
 
         try:
-            # pylint: disable=attribute-defined-outside-init
-            self.engine = AsyncLLMEngine.from_engine_args(
-                engine_args
-            )  # pylint: disable=attribute-defined-outside-init
+            self.engine = AsyncLLMEngine.from_engine_args(engine_args)
         except TypeError as e:
             print(f"E1201 UnexpectedEngineArg: {e}")
             raise
@@ -142,12 +139,7 @@ class Predictor(BasePredictor):
             print(f"E1200 VLLMUnknownError: {e}")
             raise
 
-        # pylint: disable=attribute-defined-outside-init
-        self.tokenizer = (
-            self.engine.engine.tokenizer.tokenizer
-            if hasattr(self.engine.engine.tokenizer, "tokenizer")
-            else self.engine.engine.tokenizer
-        )
+        self.tokenizer = await self.engine.get_tokenizer()
 
         if self.config.prompt_template:
             print(
