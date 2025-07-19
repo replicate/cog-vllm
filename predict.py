@@ -284,24 +284,6 @@ class Predictor(BasePredictor):
             cog.emit_metric("output_token_count", len(result.outputs[0].token_ids))
 
     def load_config(self, weights: str) -> PredictorConfig:
-        """
-        Load the predictor configuration from the specified weights directory or
-        the current directory.
-
-        Load `predictor_config.json` from the weights directory or current directory.
-        Return a default PredictorConfig object if not found or an error occurs.
-
-        Priority:
-        1. Load `predictor_config.json` from the specified weights directory.
-        2. If not found, load `predictor_config.json` from the current directory.
-        3. If not found or an error occurs, return a default PredictorConfig object.
-
-        Args:
-            weights (str): The path to the weights directory.
-
-        Returns:
-            PredictorConfig: The loaded predictor configuration.
-        """
         if os.path.exists(os.path.join(weights, "predictor_config.json")):
             predictor_config_path = os.path.join(weights, "predictor_config.json")
         elif os.path.exists("./predictor_config.json"):
