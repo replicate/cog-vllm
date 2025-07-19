@@ -337,7 +337,6 @@ class Predictor(BasePredictor):
             predictor_config_path = None
         if predictor_config_path:
             try:
-                print("Loading predictor_config.json")
                 with open(
                     predictor_config_path,
                     "r",
