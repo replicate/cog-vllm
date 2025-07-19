@@ -272,10 +272,10 @@ class Predictor(BasePredictor):
 
             start = len(text)
 
-        self.log(f"Generation took {time.time() - start:.2f}s")
-        self.log(f"Formatted prompt: {prompt}")
-        self.log(f"Random seed used: `{seed}`\n")
-        self.log(
+        print(f"Generation took {time.time() - start:.2f}s")
+        print(f"Formatted prompt: {prompt}")
+        print(f"Random seed used: `{seed}`\n")
+        print(
             "Note: Random seed will not impact output if greedy decoding is used.\n"
         )
 
