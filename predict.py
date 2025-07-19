@@ -346,7 +346,6 @@ class Predictor(BasePredictor):
                     encoding="utf-8",
                 ) as f:
                     config = json.load(f)
-                # pylint: disable=attribute-defined-outside-init
                 config = PredictorConfig(**config)
             except Exception as e:
                 raise UserError(f"E1202 InvalidPredictorConfig: {e}") from e
