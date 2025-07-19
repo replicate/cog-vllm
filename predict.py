@@ -49,23 +49,6 @@ class VLLMError(Exception):
 def format_prompt(
     prompt: str, prompt_template: str, system_prompt: Optional[str]
 ) -> str:
-    """
-    Formats the given prompt using the provided prompt template and system prompt.
-
-    Args:
-        prompt (str): The user-provided prompt to be formatted.
-        prompt_template (str): The template string that includes placeholders for the prompt
-        and, optionally, system prompt. Must include {prompt}.
-        system_prompt (Optional[str]): An optional system prompt to be included in the
-        formatted prompt.
-
-    Returns:
-        str: The formatted prompt string.
-
-    Raises:
-        UserError: If the prompt template does not include the '{prompt}' placeholder or if
-        there is an error in formatting.
-    """
     if not prompt_template:
         prompt_template = "{prompt}"
     if prompt and "{prompt}" not in prompt_template:
