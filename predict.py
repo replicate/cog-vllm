@@ -142,19 +142,19 @@ class Predictor(BasePredictor):
         self.tokenizer = await self.engine.get_tokenizer()
 
         if self.config.prompt_template:
-            print(
+            self.log(
                 f"Using prompt template from `predictor_config.json`: {self.config.prompt_template}"
             )
             self.tokenizer.chat_template = self.config.prompt_template
             self.prompt_template = None
 
         elif self.tokenizer.chat_template:
-            print(
+            self.log(
                 f"Using prompt template from `tokenizer`: {self.tokenizer.chat_template}"
             )
             self.prompt_template = None
         else:
-            print(
+            self.log(
                 "No prompt template specified in `predictor_config.json` or "
                 f"`tokenizer`, defaulting to: {PROMPT_TEMPLATE}"
             )
@@ -166,7 +166,7 @@ class Predictor(BasePredictor):
             **dict(self._defaults, **{"max_tokens": 3, "prompt": "hi"})
         )
         test_output = "".join([tok async for tok in generator])
-        print("Test prediction output:", test_output)
+        self.log(f"Test prediction output: {test_output}")
         self._testing = False
 
     async def predict(
