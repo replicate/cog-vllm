@@ -222,7 +222,7 @@ class Predictor(BasePredictor):
                     messages, tokenize=False, add_generation_prompt=True
                 )
         elif system_prompt:
-            self.log(
+            print(
                 "Warning: ignoring system prompt because no chat template was configured"
             )
 
