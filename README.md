@@ -16,8 +16,29 @@ or to [Replicate].
 * 🏭 **Support multiple concurrent requests**.
   Continuous batching works out of the box.
 
+* ⚡ **Latest versions**.
+  Updated for vLLM 0.9.2 and latest Cog with async streaming support.
+
 * 🐢 **Open Source, all the way down**.
   Look inside, take it apart, make it do exactly what you need.
+
+## Repository Structure
+
+The repository contains the following key files:
+
+```
+├── predict.py              # Main prediction logic with async vLLM integration
+├── train.py               # Training script for custom models
+├── cog.yaml               # Cog configuration file
+├── requirements.txt       # Python dependencies
+├── utils.py               # Utility functions for model handling
+├── prompt_templates.py    # Prompt formatting templates
+├── test.sh               # Test script
+├── tests/                # Test suite
+│   ├── unit/             # Unit tests
+│   └── end_to_end/       # End-to-end tests
+└── .cog/                 # Cog build artifacts
+```
 
 ## Quickstart
 
@@ -44,11 +65,10 @@ or customize it and push up your changes.
 If you're on a machine or VM with a GPU,
 you can try out changes before pushing them to Replicate.
 
-Start by [installing or upgrading Cog](https://cog.run/#install).
-You'll need Cog [v0.10.0-alpha11](https://github.com/replicate/cog/releases/tag/v0.10.0-alpha11):
+Start by [installing or upgrading Cog](https://cog.run/#install):
 
 ```console
-$ sudo curl -o /usr/local/bin/cog -L "https://github.com/replicate/cog/releases/download/v0.10.0-alpha11/cog_$(uname -s)_$(uname -m)"
+$ sudo curl -o /usr/local/bin/cog -L "https://github.com/replicate/cog/releases/latest/download/cog_$(uname -s)_$(uname -m)"
 $ sudo chmod +x /usr/local/bin/cog
 ```
 
@@ -79,7 +99,7 @@ $ cog predict -e "COG_WEIGHTS=$COG_WEIGHTS" \
 ```
 
 The first time you run this command,
-Cog downloads the model weights and save them to the `models` subdirectory.
+Cog downloads the model weights and saves them to the local cache.
 
 To make multiple predictions,
 start up the HTTP server and send it `POST /predictions` requests.
@@ -93,6 +113,60 @@ $ curl http://localhost:5000/predictions -X POST \
     -H 'Content-Type: application/json' \
     -d '{"input": {"prompt": "Hello!"}}'
 ```
+
+## Configuration
+
+### Dependencies
+
+The project uses the following key dependencies (see `requirements.txt`):
+
+- `vllm==0.9.2` - Latest vLLM for fast inference
+- `torch==2.7.0` - PyTorch for tensor operations
+- `jinja2==3.1.6` - Template engine for prompt formatting
+
+### Cog Configuration
+
+The `cog.yaml` file specifies:
+
+- CUDA 12.6 support
+- Python 3.12
+- GPU-enabled environment
+- Training and prediction endpoints
+
+### Customization
+
+You can customize the model behavior by:
+
+1. **Modifying prompt templates** in `prompt_templates.py`
+2. **Adjusting model parameters** in `predictor_config.json` (optional)
+3. **Updating engine arguments** in the config for specific vLLM settings
+
+## Async Streaming Support
+
+The implementation now supports async streaming with `AsyncConcatenateIterator`, 
+enabling real-time token streaming for better user experience.
+
+```python
+# The predict method returns an async iterator
+async def predict(self, ...) -> AsyncConcatenateIterator[str]:
+    # Streams tokens as they're generated
+    async for result in self.engine.generate(...):
+        yield result.outputs[0].text[start:]
+```
+
+## Testing
+
+Run the test suite:
+
+```console
+$ ./test.sh
+```
+
+The test suite includes:
+- Unit tests for core functionality
+- End-to-end tests for prediction workflows
+
+## Deployment
 
 When you're finished working,
 you can push your changes to Replicate.
@@ -134,6 +208,17 @@ prediction = replicate.predictions.create(
 for event in prediction.stream():
     print(str(event), end="")
 ```
+
+## Architecture
+
+The codebase is built around:
+
+- **`predict.py`**: Main prediction logic with async vLLM engine integration
+- **`train.py`**: Model training and fine-tuning capabilities
+- **`utils.py`**: Helper functions for model path resolution and utilities
+- **`prompt_templates.py`**: Configurable prompt formatting templates
+
+The async architecture enables efficient concurrent request handling and real-time streaming.
 
 [Replicate]: https://replicate.com
 [vLLM-supported language model]: https://docs.vllm.ai/en/latest/models/supported_models.html

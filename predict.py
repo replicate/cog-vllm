@@ -1,4 +1,3 @@
-# pylint: disable=missing-module-docstring, no-name-in-module, attribute-defined-outside-init
 import json
 import os
 import time
@@ -9,12 +8,12 @@ from pprint import pprint
 import inspect
 import random
 import jinja2
-import torch  # pylint: disable=import-error
-import cog  # pylint: disable=import-error
-from cog import BasePredictor, ConcatenateIterator, Input
+import torch
+import cog
+from cog import BasePredictor, AsyncConcatenateIterator, Input
 from vllm import AsyncLLMEngine
-from vllm.engine.arg_utils import AsyncEngineArgs  # pylint: disable=import-error
-from vllm.sampling_params import SamplingParams  # pylint: disable=import-error
+from vllm.engine.arg_utils import AsyncEngineArgs
+from vllm.sampling_params import SamplingParams
 
 import prompt_templates
 from utils import resolve_model_path
@@ -26,16 +25,6 @@ SYSTEM_PROMPT = "You are a helpful assistant."
 
 @dataclass
 class PredictorConfig:
-    """
-    PredictorConfig is a configuration class for the Predictor.
-
-    Attributes:
-        prompt_template (Optional[str]): A template to format the prompt with. If not provided,
-                                         the default prompt template will be used.
-        engine_args (Optional[Dict]): A dictionary of engine arguments. If not provided,
-                                      an empty dictionary will be used.
-    """
-
     prompt_template: Optional[str] = None
     engine_args: Optional[Dict] = field(default_factory=dict)
 
@@ -49,12 +38,10 @@ class PredictorConfig:
             )
 
 
-# pylint: disable=missing-class-docstring
 class UserError(Exception):
     pass
 
 
-# pylint: disable=missing-class-docstring
 class VLLMError(Exception):
     pass
 
@@ -62,23 +49,6 @@ class VLLMError(Exception):
 def format_prompt(
     prompt: str, prompt_template: str, system_prompt: Optional[str]
 ) -> str:
-    """
-    Formats the given prompt using the provided prompt template and system prompt.
-
-    Args:
-        prompt (str): The user-provided prompt to be formatted.
-        prompt_template (str): The template string that includes placeholders for the prompt
-        and, optionally, system prompt. Must include {prompt}.
-        system_prompt (Optional[str]): An optional system prompt to be included in the
-        formatted prompt.
-
-    Returns:
-        str: The formatted prompt string.
-
-    Raises:
-        UserError: If the prompt template does not include the '{prompt}' placeholder or if
-        there is an error in formatting.
-    """
     if not prompt_template:
         prompt_template = "{prompt}"
     if prompt and "{prompt}" not in prompt_template:
@@ -111,11 +81,8 @@ def format_prompt(
         ) from e
 
 
-# pylint: disable=missing-class-docstring
 class Predictor(BasePredictor):
-    async def setup(
-        self, weights: str
-    ):  # pylint: disable=invalid-overridden-method, signature-differs
+    async def setup(self, weights: str):
         if not weights:
             raise ValueError(
                 "Weights must be provided. "
@@ -137,10 +104,7 @@ class Predictor(BasePredictor):
         engine_args = AsyncEngineArgs(**engine_args)
 
         try:
-            # pylint: disable=attribute-defined-outside-init
-            self.engine = AsyncLLMEngine.from_engine_args(
-                engine_args
-            )  # pylint: disable=attribute-defined-outside-init
+            self.engine = AsyncLLMEngine.from_engine_args(engine_args)
         except TypeError as e:
             print(f"E1201 UnexpectedEngineArg: {e}")
             raise
@@ -148,12 +112,7 @@ class Predictor(BasePredictor):
             print(f"E1200 VLLMUnknownError: {e}")
             raise
 
-        # pylint: disable=attribute-defined-outside-init
-        self.tokenizer = (
-            self.engine.engine.tokenizer.tokenizer
-            if hasattr(self.engine.engine.tokenizer, "tokenizer")
-            else self.engine.engine.tokenizer
-        )
+        self.tokenizer = await self.engine.get_tokenizer()
 
         if self.config.prompt_template:
             print(
@@ -180,10 +139,10 @@ class Predictor(BasePredictor):
             **dict(self._defaults, **{"max_tokens": 3, "prompt": "hi"})
         )
         test_output = "".join([tok async for tok in generator])
-        print("Test prediction output:", test_output)
+        print(f"Test prediction output: {test_output}")
         self._testing = False
 
-    async def predict(  # pylint: disable=invalid-overridden-method, arguments-differ, too-many-arguments, too-many-locals
+    async def predict(
         self,
         prompt: str = Input(description="Prompt", default=""),
         system_prompt: str = Input(
@@ -232,7 +191,7 @@ class Predictor(BasePredictor):
             description="Random seed. Leave blank to randomize the seed.",
             default=None,
         ),
-    ) -> ConcatenateIterator[str]:
+    ) -> AsyncConcatenateIterator[str]:
         start = time.time()
         if not seed:
             seed = int(random.randint(0, 100000))
@@ -244,6 +203,11 @@ class Predictor(BasePredictor):
                 prompt_template=prompt_template,
                 system_prompt=system_prompt,
             )
+
+            print(f"{prompt_template=}")  # TODO(andreas): remove debug
+            print(f"{prompt=}")  # TODO(andreas): remove debug
+
+
 
         elif self.tokenizer.chat_template:
             system_prompt = "" if system_prompt is None else system_prompt
@@ -263,8 +227,7 @@ class Predictor(BasePredictor):
                     messages, tokenize=False, add_generation_prompt=True
                 )
         elif system_prompt:
-            # pylint: disable=no-member
-            self.log(
+            print(
                 "Warning: ignoring system prompt because no chat template was configured"
             )
 
@@ -278,7 +241,6 @@ class Predictor(BasePredictor):
             stop_token_ids=[self.tokenizer.eos_token_id],
             frequency_penalty=frequency_penalty,
             presence_penalty=presence_penalty,
-            use_beam_search=False,
             seed=seed,
         )
         if isinstance(stop_sequences, str) and stop_sequences:
@@ -291,9 +253,9 @@ class Predictor(BasePredictor):
         request_id = uuid4().hex
 
         generator = self.engine.generate(
-            prompt,
-            sampling_params,
-            request_id,
+            prompt=prompt,
+            sampling_params=sampling_params,
+            request_id=request_id,
         )
         start = 0
 
@@ -303,51 +265,25 @@ class Predictor(BasePredictor):
             ), "Expected exactly one output from generation request."
 
             if result.outputs[0].finish_reason == "length" and start != 0:
-                # hard to find the max length though, sorry
                 raise UserError(
                     "E1002 PromptTooLong: Prompt length exceeds maximum input length"
                 )
             text = result.outputs[0].text
 
-            # Normalize text by removing any incomplete surrogate pairs (common with emojis)
             text = text.replace("\N{REPLACEMENT CHARACTER}", "")
 
             yield text[start:]
 
             start = len(text)
 
-        # pylint: disable=no-member
-        self.log(f"Generation took {time.time() - start:.2f}s")
-        self.log(f"Formatted prompt: {prompt}")
-        self.log(f"Random seed used: `{seed}`\n")
-        self.log(
+        print(f"Generation took {time.time() - start:.2f}s")
+        print(f"Formatted prompt: {prompt}")
+        print(f"Random seed used: `{seed}`\n")
+        print(
             "Note: Random seed will not impact output if greedy decoding is used.\n"
         )
 
-        if not self._testing:
-            # pylint: disable=no-member, undefined-loop-variable
-            cog.emit_metric("input_token_count", len(result.prompt_token_ids))
-            cog.emit_metric("output_token_count", len(result.outputs[0].token_ids))
-
     def load_config(self, weights: str) -> PredictorConfig:
-        """
-        Load the predictor configuration from the specified weights directory or
-        the current directory.
-
-        Load `predictor_config.json` from the weights directory or current directory.
-        Return a default PredictorConfig object if not found or an error occurs.
-
-        Priority:
-        1. Load `predictor_config.json` from the specified weights directory.
-        2. If not found, load `predictor_config.json` from the current directory.
-        3. If not found or an error occurs, return a default PredictorConfig object.
-
-        Args:
-            weights (str): The path to the weights directory.
-
-        Returns:
-            PredictorConfig: The loaded predictor configuration.
-        """
         if os.path.exists(os.path.join(weights, "predictor_config.json")):
             predictor_config_path = os.path.join(weights, "predictor_config.json")
         elif os.path.exists("./predictor_config.json"):
@@ -363,7 +299,6 @@ class Predictor(BasePredictor):
                     encoding="utf-8",
                 ) as f:
                     config = json.load(f)
-                # pylint: disable=attribute-defined-outside-init
                 config = PredictorConfig(**config)
             except Exception as e:
                 raise UserError(f"E1202 InvalidPredictorConfig: {e}") from e
@@ -373,8 +308,10 @@ class Predictor(BasePredictor):
         pprint(config)
         return config
 
-    _defaults = {
-        key: param.default.default
-        for key, param in inspect.signature(predict).parameters.items()
-        if hasattr(param.default, "default")
-    }
+    @property
+    def _defaults(self):
+        return {
+            key: param.default.default
+            for key, param in inspect.signature(Predictor.predict).parameters.items()
+            if hasattr(param.default, "default")
+        }
