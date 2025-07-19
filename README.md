@@ -16,8 +16,37 @@ or to [Replicate].
 * 🏭 **Support multiple concurrent requests**.
   Continuous batching works out of the box.
 
+* 🔄 **Async streaming support**.
+  Built with async/await for efficient streaming responses.
+
 * 🐢 **Open Source, all the way down**.
   Look inside, take it apart, make it do exactly what you need.
+
+## Repository Structure
+
+```
+cog-vllm/
+├── predict.py              # Main prediction logic with vLLM integration
+├── train.py               # Training/fine-tuning support
+├── utils.py               # Utility functions for model handling
+├── prompt_templates.py    # Prompt templates for different model types
+├── cog.yaml              # Cog configuration
+├── requirements.txt      # Python dependencies
+├── test.sh              # Test script
+├── tests/               # Test suites
+│   ├── unit/           # Unit tests
+│   └── end_to_end/     # End-to-end tests
+└── README.md           # This file
+```
+
+## Features
+
+- **Latest vLLM Integration**: Uses vLLM 0.9.2 with AsyncLLMEngine for optimal performance
+- **Latest Cog Support**: Updated for modern Cog features including async predictors
+- **Flexible Prompt Templates**: Support for custom prompt templates and chat formats
+- **Comprehensive Configuration**: Configurable via `predictor_config.json`
+- **Streaming Support**: Real-time token streaming with AsyncConcatenateIterator
+- **GPU Optimized**: CUDA 12.6 support with multi-GPU tensor parallelism
 
 ## Quickstart
 
@@ -29,27 +58,17 @@ such as [google/gemma-2b](https://huggingface.co/google/gemma-2b)
 > Gated models require a [Hugging Face API token](https://huggingface.co/settings/tokens),
 > which you can set in the `hf_token` field of the model creation form.
 
-<img width="1055" alt="Create a new vLLM model on Replicate" src="https://github.com/replicate/cog-vllm/assets/7659/a8f31837-0ed3-40f7-974c-d0a16ae48350">
-
-Replicate downloads the model files, packages them into a `.tar` archive,
-and pushes a new version of your model that's ready to use.
-
-<img width="1322" alt="Trained vLLM model on Replicate" src="https://github.com/replicate/cog-vllm/assets/7659/ebb84e12-9173-4fb0-8749-7293a105cf13">
-
-From here, you can either use your model as-is,
-or customize it and push up your changes.
-
 ## Local Development
 
 If you're on a machine or VM with a GPU,
 you can try out changes before pushing them to Replicate.
 
-Start by [installing or upgrading Cog](https://cog.run/#install).
-You'll need Cog [v0.10.0-alpha11](https://github.com/replicate/cog/releases/tag/v0.10.0-alpha11):
+Start by [installing Cog](https://cog.run/#install):
 
 ```console
-$ sudo curl -o /usr/local/bin/cog -L "https://github.com/replicate/cog/releases/download/v0.10.0-alpha11/cog_$(uname -s)_$(uname -m)"
+$ curl -o /usr/local/bin/cog -L "https://github.com/replicate/cog/releases/latest/download/cog_$(uname -s)_$(uname -m)"
 $ sudo chmod +x /usr/local/bin/cog
+$ sudo mv /usr/local/bin/cog /usr/local/bin/
 ```
 
 Then clone this repository:
@@ -59,67 +78,86 @@ $ git clone https://github.com/replicate/cog-vllm
 $ cd cog-vllm
 ```
 
-Go to the [Replicate dashboard](https://replicate.com/trainings) and 
-navigate to the training for your vLLM model.
-From that page, copy the weights URL from the <kbd>Download weights</kbd> button.
-
-<img width="642" alt="Copy weights URL from Replicate training" src="https://github.com/replicate/cog-vllm/assets/7659/97c403a9-ec49-418a-a7e2-b37cb0e0bb8c">
-
-Set the `COG_WEIGHTS` environment variable with that copied value: 
+Set the model weights URL as an environment variable:
 
 ```console
-$ export COG_WEIGHTS="..."
+$ export COG_WEIGHTS="https://huggingface.co/microsoft/DialoGPT-medium"
 ```
 
 Now, make your first prediction against the model locally:
 
 ```console
-$ cog predict -e "COG_WEIGHTS=$COG_WEIGHTS" \ 
-              -i prompt="Hello!"
+$ cog predict -e "COG_WEIGHTS=$COG_WEIGHTS" -i prompt="Hello!"
 ```
 
-The first time you run this command,
-Cog downloads the model weights and save them to the `models` subdirectory.
+### Development Server
 
-To make multiple predictions,
-start up the HTTP server and send it `POST /predictions` requests.
+To make multiple predictions, start up the HTTP server:
 
 ```console
 # Start the HTTP server
 $ cog run -p 5000 -e "COG_WEIGHTS=$COG_WEIGHTS" python -m cog.server.http
 
-# In a different terminal session, send requests to the server
+# In a different terminal session, send requests
 $ curl http://localhost:5000/predictions -X POST \
     -H 'Content-Type: application/json' \
-    -d '{"input": {"prompt": "Hello!"}}'
+    -d '{"input": {"prompt": "Hello!", "max_tokens": 50}}'
 ```
 
-When you're finished working,
-you can push your changes to Replicate.
+### Configuration
 
-Grab your token from [replicate.com/account](https://replicate.com/account) 
-and set it as an environment variable:
+You can customize the model behavior by creating a `predictor_config.json` file:
 
-```shell
-export REPLICATE_API_TOKEN=<your token>
+```json
+{
+  "prompt_template": "### User: {prompt}\n### Assistant: ",
+  "engine_args": {
+    "tensor_parallel_size": 2,
+    "dtype": "bfloat16",
+    "max_model_len": 4096
+  }
+}
 ```
+
+### Testing
+
+Run the test suite:
 
 ```console
+$ ./test.sh
+```
+
+Or run specific tests:
+
+```console
+$ python -m pytest tests/unit/
+$ python -m pytest tests/end_to_end/
+```
+
+## Dependencies
+
+The current implementation uses:
+
+- **vLLM 0.9.2**: Latest version with improved async support
+- **PyTorch 2.7.0**: For GPU acceleration
+- **Jinja2 3.1.6**: For prompt templating
+- **CUDA 12.6**: For optimal GPU performance
+
+See `requirements.txt` for the complete dependency list.
+
+## Deployment
+
+When you're ready to deploy:
+
+```console
+$ export REPLICATE_API_TOKEN=<your-token>
 $ echo $REPLICATE_API_TOKEN | cog login --token-stdin
 $ cog push r8.im/<your-username>/<your-model-name>
---> ...
---> Pushing image 'r8.im/...'
 ```
 
-After you push your model, you can try running it on Replicate.
+## Usage Examples
 
-Install the [Replicate Python SDK][replicate-python]:
-
-```console
-$ pip install replicate
-```
-
-Create a prediction and stream its output:
+### Basic Text Generation
 
 ```python
 import replicate
@@ -127,7 +165,11 @@ import replicate
 model = replicate.models.get("<your-username>/<your-model-name>")
 prediction = replicate.predictions.create(
     version=model.latest_version,
-    input={ "prompt": "Hello" },
+    input={
+        "prompt": "Explain quantum computing",
+        "max_tokens": 200,
+        "temperature": 0.7
+    },
     stream=True
 )
 
@@ -135,6 +177,18 @@ for event in prediction.stream():
     print(str(event), end="")
 ```
 
+### Chat Format
+
+```python
+prediction = replicate.predictions.create(
+    version=model.latest_version,
+    input={
+        "prompt": "What is the capital of France?",
+        "system_prompt": "You are a helpful geography expert.",
+        "max_tokens": 100
+    }
+)
+```
+
 [Replicate]: https://replicate.com
 [vLLM-supported language model]: https://docs.vllm.ai/en/latest/models/supported_models.html
-[replicate-python]: https://github.com/replicate/replicate-python
