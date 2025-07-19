@@ -277,9 +277,9 @@ class Predictor(BasePredictor):
         request_id = uuid4().hex
 
         generator = self.engine.generate(
-            prompt,
-            sampling_params,
-            request_id,
+            prompt=prompt,
+            sampling_params=sampling_params,
+            request_id=request_id,
         )
         start = 0
 
