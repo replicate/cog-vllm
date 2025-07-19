@@ -236,7 +236,6 @@ class Predictor(BasePredictor):
             stop_token_ids=[self.tokenizer.eos_token_id],
             frequency_penalty=frequency_penalty,
             presence_penalty=presence_penalty,
-            use_beam_search=False,
             seed=seed,
         )
         if isinstance(stop_sequences, str) and stop_sequences:
