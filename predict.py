@@ -162,7 +162,7 @@ class Predictor(BasePredictor):
             self.prompt_template = PROMPT_TEMPLATE
 
         self._testing = True
-        generator = self.predict(
+        generator = await self.predict(
             **dict(self._defaults, **{"max_tokens": 3, "prompt": "hi"})
         )
         test_output = "".join([tok async for tok in generator])
