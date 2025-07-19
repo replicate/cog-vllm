@@ -133,10 +133,10 @@ class Predictor(BasePredictor):
         try:
             self.engine = AsyncLLMEngine.from_engine_args(engine_args)
         except TypeError as e:
-            print(f"E1201 UnexpectedEngineArg: {e}")
+            self.log(f"E1201 UnexpectedEngineArg: {e}")
             raise
         except Exception as e:
-            print(f"E1200 VLLMUnknownError: {e}")
+            self.log(f"E1200 VLLMUnknownError: {e}")
             raise
 
         self.tokenizer = await self.engine.get_tokenizer()
