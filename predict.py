@@ -301,7 +301,6 @@ class Predictor(BasePredictor):
 
             start = len(text)
 
-        # pylint: disable=no-member
         self.log(f"Generation took {time.time() - start:.2f}s")
         self.log(f"Formatted prompt: {prompt}")
         self.log(f"Random seed used: `{seed}`\n")
@@ -310,7 +309,6 @@ class Predictor(BasePredictor):
         )
 
         if not self._testing:
-            # pylint: disable=no-member, undefined-loop-variable
             cog.emit_metric("input_token_count", len(result.prompt_token_ids))
             cog.emit_metric("output_token_count", len(result.outputs[0].token_ids))
 
