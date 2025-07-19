@@ -1,7 +1,0 @@
-pytest-asyncio
-pytest-mock
-pylint
-black
-cog==0.10.0a18
-attrs>=20.1,<24
-jinja2

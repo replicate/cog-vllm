@@ -204,6 +204,11 @@ class Predictor(BasePredictor):
                 system_prompt=system_prompt,
             )
 
+            print(f"{prompt_template=}")  # TODO(andreas): remove debug
+            print(f"{prompt=}")  # TODO(andreas): remove debug
+
+
+
         elif self.tokenizer.chat_template:
             system_prompt = "" if system_prompt is None else system_prompt
             try:
@@ -277,10 +282,6 @@ class Predictor(BasePredictor):
         print(
             "Note: Random seed will not impact output if greedy decoding is used.\n"
         )
-
-        if not self._testing:
-            cog.emit_metric("input_token_count", len(result.prompt_token_ids))
-            cog.emit_metric("output_token_count", len(result.outputs[0].token_ids))
 
     def load_config(self, weights: str) -> PredictorConfig:
         if os.path.exists(os.path.join(weights, "predictor_config.json")):
