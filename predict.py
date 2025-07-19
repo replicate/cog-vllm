@@ -25,16 +25,6 @@ SYSTEM_PROMPT = "You are a helpful assistant."
 
 @dataclass
 class PredictorConfig:
-    """
-    PredictorConfig is a configuration class for the Predictor.
-
-    Attributes:
-        prompt_template (Optional[str]): A template to format the prompt with. If not provided,
-                                         the default prompt template will be used.
-        engine_args (Optional[Dict]): A dictionary of engine arguments. If not provided,
-                                      an empty dictionary will be used.
-    """
-
     prompt_template: Optional[str] = None
     engine_args: Optional[Dict] = field(default_factory=dict)
 
