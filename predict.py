@@ -108,11 +108,8 @@ def format_prompt(
         ) from e
 
 
-# pylint: disable=missing-class-docstring
 class Predictor(BasePredictor):
-    async def setup(
-        self, weights: str
-    ):  # pylint: disable=invalid-overridden-method, signature-differs
+    async def setup(self, weights: str):
         if not weights:
             raise ValueError(
                 "Weights must be provided. "
