@@ -249,7 +249,6 @@ class Predictor(BasePredictor):
                     messages, tokenize=False, add_generation_prompt=True
                 )
         elif system_prompt:
-            # pylint: disable=no-member
             self.log(
                 "Warning: ignoring system prompt because no chat template was configured"
             )
