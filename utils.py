@@ -13,14 +13,22 @@ async def resolve_model_path(url_or_local_path: str) -> str:
     Resolves the model path, downloading if necessary.
 
     Args:
-        url_or_local_path (str): URL to the tarball or local path to a
-        directory containing the model artifacts.
+        url_or_local_path (str): URL to the tarball, local path to a
+        directory containing the model artifacts, or Hugging Face model name.
 
     Returns:
-        str: Path to the directory containing the model artifacts.
+        str: Path to the directory containing the model artifacts, or HF model name.
     """
 
     parsed_url = urlparse(url_or_local_path)
+    
+    # Check if it's a Hugging Face model name (org/model-name format)
+    if "/" in url_or_local_path and parsed_url.scheme == "" and not os.path.exists(url_or_local_path):
+        # Assume it's a HF model name like "EleutherAI/pythia-70m"
+        # VLLM can handle HF model names directly
+        print(f"Using Hugging Face model: {url_or_local_path}")
+        return url_or_local_path
+    
     if parsed_url.scheme in ["http", "https"]:
         return await download_tarball(url_or_local_path)
 
