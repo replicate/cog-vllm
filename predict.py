@@ -353,8 +353,10 @@ class Predictor(BasePredictor):
         pprint(config)
         return config
 
-    _defaults = {
-        key: param.default.default
-        for key, param in inspect.signature(predict).parameters.items()
-        if hasattr(param.default, "default")
-    }
+    @property
+    def _defaults(self):
+        return {
+            key: param.default.default
+            for key, param in inspect.signature(Predictor.predict).parameters.items()
+            if hasattr(param.default, "default")
+        }
