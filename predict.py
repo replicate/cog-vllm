@@ -169,7 +169,7 @@ class Predictor(BasePredictor):
         print("Test prediction output:", test_output)
         self._testing = False
 
-    async def predict(  # pylint: disable=invalid-overridden-method, arguments-differ, too-many-arguments, too-many-locals
+    async def predict(
         self,
         prompt: str = Input(description="Prompt", default=""),
         system_prompt: str = Input(
@@ -218,7 +218,7 @@ class Predictor(BasePredictor):
             description="Random seed. Leave blank to randomize the seed.",
             default=None,
         ),
-    ) -> ConcatenateIterator[str]:
+    ) -> AsyncConcatenateIterator[str]:
         start = time.time()
         if not seed:
             seed = int(random.randint(0, 100000))
