@@ -48,12 +48,10 @@ class PredictorConfig:
             )
 
 
-# pylint: disable=missing-class-docstring
 class UserError(Exception):
     pass
 
 
-# pylint: disable=missing-class-docstring
 class VLLMError(Exception):
     pass
 
