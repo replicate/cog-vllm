@@ -17,6 +17,12 @@ sys.modules["vllm"] = MagicMock()
 sys.modules["vllm.engine"] = MagicMock()
 sys.modules["vllm.engine.arg_utils"] = MagicMock()
 sys.modules["vllm.sampling_params"] = MagicMock()
+sys.modules["transformers"] = MagicMock()
+sys.modules["nvidia"] = MagicMock()
+sys.modules["nvidia.cublas"] = MagicMock()
+sys.modules["nvidia.cublas.lib"] = MagicMock()
+sys.modules["nvidia.cudnn"] = MagicMock()
+sys.modules["nvidia.cudnn.lib"] = MagicMock()
 
 
 from predict import Predictor, PredictorConfig, UserError # pylint: disable=import-error, wrong-import-position
@@ -136,7 +142,7 @@ async def test_setup_with_invalid_predictor_config():
 @pytest.mark.asyncio
 async def test_predict(mock_dependencies):
 
-    with patch('predict.cog.emit_metric') as mock_emit_metric:
+    with patch('predict.cog.emit_metric', create=True) as mock_emit_metric:
         class MockOutput:
             def __init__(self, text):
                 self.text = text

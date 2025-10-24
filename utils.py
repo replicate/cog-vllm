@@ -1,3 +1,4 @@
+# pylint: disable=duplicate-code
 import os
 import subprocess
 import time
@@ -47,27 +48,31 @@ async def maybe_download_tarball_with_pget(
     dest: str,
 ):
     """
-    Checks for existing model weights in a local volume, downloads if necessary,
-    and sets up symlinks.
+    Checks for existing model weights in a local volume or checkpoints cache,
+    downloads if necessary, and sets up symlinks.
 
-    This function first checks if a local volume (/weights) exists and can be used. If so, it uses
-    this as the primary destination. If the weights already exist in the local volume or the
-    specified destination, no download occurs. Otherwise, it downloads the tarball from the
-    provided URL using pget and extracts it.
+    This function first checks if weights exist in the local checkpoints cache.
+    If not, it checks for a local volume (/weights) and uses that if available.
+    If the weights already exist in any location, no download occurs.
 
     Args:
         url (str): URL to the model tarball.
-        dest (str): Intended destination path for the model weights.
+        dest (str): Destination path for the weights (e.g., ./checkpoints/{model_name}).
 
     Returns:
         str: Path to the directory containing the model weights, which may be either
              the original destination or a symlink to the local volume.
 
     Note:
+        - Prioritizes using existing cache in ./checkpoints/ over /weights volume
         - If weights are in the local volume, a symlink is created to `dest`.
         - If weights are already present in either location, no download occurs.
-        - The function prioritizes using the local volume (/weights) if available.
     """
+    # First check if dest (checkpoints cache) already exists and has files
+    if os.path.exists(dest) and os.listdir(dest):
+        print(f"Files already present in `{dest}`, using cached version.")
+        return dest
+
     try:
         Path("/weights").mkdir(exist_ok=True)
         first_dest = "/weights/vllm"
@@ -75,7 +80,7 @@ async def maybe_download_tarball_with_pget(
         print("/weights doesn't exist, and we couldn't create it")
         first_dest = dest
 
-    # if dest exists and is not empty, return
+    # if first_dest (/weights/vllm) exists and is not empty, use it
     if os.path.exists(first_dest) and os.listdir(first_dest):
         print(f"Files already present in `{first_dest}`, nothing will be downloaded.")
         if first_dest != dest:
@@ -112,7 +117,10 @@ async def maybe_download_tarball_with_pget(
 
 async def download_tarball(url: str) -> str:
     """
-    Downloads a tarball from a URL and extracts it.
+    Downloads a tarball from a URL and extracts it to ./checkpoints/{model_name}.
+
+    This implements local caching - models are stored in the checkpoints directory
+    and won't be re-downloaded if they already exist.
 
     Args:
         url (str): URL to the tarball.
@@ -120,6 +128,28 @@ async def download_tarball(url: str) -> str:
     Returns:
         str: Path to the directory where the tarball was extracted.
     """
-    filename = os.path.splitext(os.path.basename(url))[0]
-    dest = os.path.join(os.getcwd(), filename)
+    # Extract model name from URL
+    # Example: https://weights.replicate.delivery/default/Qwen/Qwen3-VL-8B-Instruct/model.tar
+    # Should extract: Qwen3-VL-8B-Instruct
+    url_parts = urlparse(url)
+    path_parts = url_parts.path.strip('/').split('/')
+
+    # Try to find model name in URL path
+    model_name = None
+    if 'model.tar' in path_parts[-1]:
+        # Model name is likely the directory before model.tar
+        if len(path_parts) >= 2:
+            model_name = path_parts[-2]
+    else:
+        # Use the last part of the URL (without .tar extension)
+        filename = os.path.splitext(os.path.basename(url))[0]
+        model_name = filename
+
+    # Create checkpoints directory if it doesn't exist
+    checkpoints_dir = os.path.join(os.getcwd(), 'checkpoints')
+    os.makedirs(checkpoints_dir, exist_ok=True)
+
+    # Set destination to checkpoints/{model_name}
+    dest = os.path.join(checkpoints_dir, model_name)
+
     return await maybe_download_tarball_with_pget(url, dest)

@@ -1,34 +1,63 @@
 # pylint: disable=missing-module-docstring, no-name-in-module, attribute-defined-outside-init
-import json
+
+# Fix for cuDNN library path issue with vLLM 0.11.0
+# Must be set before importing vLLM to avoid "undefined symbol: cudnnGetLibConfig" error
 import os
+try:
+    import nvidia.cublas.lib
+    import nvidia.cudnn.lib
+
+    # Get the path to nvidia libs using the module's __path__ or __file__
+    paths_to_add = []
+
+    if hasattr(nvidia.cudnn.lib, '__file__') and nvidia.cudnn.lib.__file__:
+        paths_to_add.append(os.path.dirname(nvidia.cudnn.lib.__file__))
+    elif hasattr(nvidia.cudnn.lib, '__path__'):
+        paths_to_add.extend(nvidia.cudnn.lib.__path__)
+
+    if hasattr(nvidia.cublas.lib, '__file__') and nvidia.cublas.lib.__file__:
+        paths_to_add.append(os.path.dirname(nvidia.cublas.lib.__file__))
+    elif hasattr(nvidia.cublas.lib, '__path__'):
+        paths_to_add.extend(nvidia.cublas.lib.__path__)
+
+    if paths_to_add:
+        current_ld_path = os.environ.get('LD_LIBRARY_PATH', '')
+        NEW_LD_PATH = ':'.join(paths_to_add + [current_ld_path])
+        os.environ['LD_LIBRARY_PATH'] = NEW_LD_PATH
+except (ImportError, AttributeError, TypeError):
+    # If nvidia libs not found or can't determine path, continue anyway
+    pass
+
+import json
 import time
 from typing import Optional, Dict
 from uuid import uuid4
 from dataclasses import dataclass, field
 from pprint import pprint
+from pathlib import Path
+from urllib.parse import urlparse
 import inspect
 import random
 import jinja2
 import torch  # pylint: disable=import-error
-import cog  # pylint: disable=import-error
-from cog import BasePredictor, ConcatenateIterator, Input
+import cog
+from cog import BasePredictor, AsyncConcatenateIterator, Input
 from vllm import AsyncLLMEngine
 from vllm.engine.arg_utils import AsyncEngineArgs  # pylint: disable=import-error
 from vllm.sampling_params import SamplingParams  # pylint: disable=import-error
-
+from transformers import AutoTokenizer  # pylint: disable=import-error
 import prompt_templates
 from utils import resolve_model_path
 
 PROMPT_TEMPLATE = prompt_templates.COMPLETION  # Change this for instruct models
-
 SYSTEM_PROMPT = "You are a helpful assistant."
-
+# COG_WEIGHTS="Qwen/Qwen3-VL-8B-Instruct"
+COG_WEIGHTS="https://weights.replicate.delivery/default/Qwen/Qwen3-VL-8B-Instruct/model.tar"
 
 @dataclass
 class PredictorConfig:
     """
     PredictorConfig is a configuration class for the Predictor.
-
     Attributes:
         prompt_template (Optional[str]): A template to format the prompt with. If not provided,
                                          the default prompt template will be used.
@@ -113,18 +142,48 @@ def format_prompt(
 
 # pylint: disable=missing-class-docstring
 class Predictor(BasePredictor):
+    def train(self, **kwargs):  # pylint: disable=unused-argument
+        """Training is not supported for this model."""
+        raise NotImplementedError("Training is not supported for this inference-only model.")
+
+    # pylint: disable=invalid-overridden-method,too-many-branches
     async def setup(
-        self, weights: str
-    ):  # pylint: disable=invalid-overridden-method, signature-differs
+        self, weights: str = None
+    ):  # check if weights is provided or COG_WEIGHTS is set
+        # Use COG_WEIGHTS default if weights not provided
+        if not weights:
+            weights = COG_WEIGHTS
+
         if not weights:
             raise ValueError(
                 "Weights must be provided. "
                 "Set COG_WEIGHTS environment variable to "
                 "a URL to a tarball containing the weights file "
-                "or a path to the weights file."
+                "or a path to the weights file, or set COG_WEIGHTS in predict.py."
             )
 
-        weights = await resolve_model_path(str(weights))
+        # Handle URLFile/URLPath objects from Cog
+        # These are special types that Cog uses to pass URLs as file-like objects
+        weights_path = self._extract_weights_path(weights)
+
+        # If weights_path is a local path (cached), use it directly
+        # without calling resolve_model_path to avoid re-download attempts
+        parsed = urlparse(weights_path)
+
+        if parsed.scheme in ["", "file"]:
+            # It's a local path, check if it exists and use it directly
+            is_valid_dir = (os.path.exists(weights_path) and
+                           os.path.isdir(weights_path) and
+                           os.listdir(weights_path))
+            if is_valid_dir:
+                print(f"Using cached model from: {weights_path}")
+                weights = weights_path
+            else:
+                # Path doesn't exist or is empty, this shouldn't happen but handle gracefully
+                weights = await resolve_model_path(weights_path)
+        else:
+            # It's a URL, proceed with download (which will check cache again)
+            weights = await resolve_model_path(weights_path)
         self.config = self.load_config(weights)
 
         engine_args = self.config.engine_args or {}
@@ -149,11 +208,8 @@ class Predictor(BasePredictor):
             raise
 
         # pylint: disable=attribute-defined-outside-init
-        self.tokenizer = (
-            self.engine.engine.tokenizer.tokenizer
-            if hasattr(self.engine.engine.tokenizer, "tokenizer")
-            else self.engine.engine.tokenizer
-        )
+        # Load tokenizer directly from the model path
+        self.tokenizer = AutoTokenizer.from_pretrained(weights)
 
         if self.config.prompt_template:
             print(
@@ -180,10 +236,10 @@ class Predictor(BasePredictor):
             **dict(self._defaults, **{"max_tokens": 3, "prompt": "hi"})
         )
         test_output = "".join([tok async for tok in generator])
-        print("Test prediction output:", test_output)
+        print("Setup complete, test prediction output:", test_output)
         self._testing = False
 
-    async def predict(  # pylint: disable=invalid-overridden-method, arguments-differ, too-many-arguments, too-many-locals
+    async def predict(  # pylint: disable=invalid-overridden-method, arguments-differ, too-many-arguments, too-many-locals, too-many-positional-arguments
         self,
         prompt: str = Input(description="Prompt", default=""),
         system_prompt: str = Input(
@@ -221,18 +277,18 @@ class Predictor(BasePredictor):
             description="A comma-separated list of sequences to stop generation at. "
             "For example, '<end>,<stop>' will stop generation at the first instance of "
             "'end' or '<stop>'.",
-            default=None,
+            default="",
         ),
         prompt_template: str = Input(
             description="A template to format the prompt with. If not provided, "
             "the default prompt template will be used.",
-            default=None,
+            default="",
         ),
         seed: int = Input(
             description="Random seed. Leave blank to randomize the seed.",
-            default=None,
+            default=0,
         ),
-    ) -> ConcatenateIterator[str]:
+    ) -> AsyncConcatenateIterator[str]:
         start = time.time()
         if not seed:
             seed = int(random.randint(0, 100000))
@@ -264,9 +320,10 @@ class Predictor(BasePredictor):
                 )
         elif system_prompt:
             # pylint: disable=no-member
-            self.log(
-                "Warning: ignoring system prompt because no chat template was configured"
-            )
+            if hasattr(self, 'log'):
+                self.log(
+                    "Warning: ignoring system prompt because no chat template was configured"
+                )
 
         sampling_params = SamplingParams(
             n=1,
@@ -278,7 +335,6 @@ class Predictor(BasePredictor):
             stop_token_ids=[self.tokenizer.eos_token_id],
             frequency_penalty=frequency_penalty,
             presence_penalty=presence_penalty,
-            use_beam_search=False,
             seed=seed,
         )
         if isinstance(stop_sequences, str) and stop_sequences:
@@ -302,11 +358,6 @@ class Predictor(BasePredictor):
                 len(result.outputs) == 1
             ), "Expected exactly one output from generation request."
 
-            if result.outputs[0].finish_reason == "length" and start != 0:
-                # hard to find the max length though, sorry
-                raise UserError(
-                    "E1002 PromptTooLong: Prompt length exceeds maximum input length"
-                )
             text = result.outputs[0].text
 
             # Normalize text by removing any incomplete surrogate pairs (common with emojis)
@@ -317,17 +368,89 @@ class Predictor(BasePredictor):
             start = len(text)
 
         # pylint: disable=no-member
-        self.log(f"Generation took {time.time() - start:.2f}s")
-        self.log(f"Formatted prompt: {prompt}")
-        self.log(f"Random seed used: `{seed}`\n")
-        self.log(
-            "Note: Random seed will not impact output if greedy decoding is used.\n"
-        )
+        if hasattr(self, 'log'):
+            self.log(f"Generation took {time.time() - start:.2f}s")
+            self.log(f"Formatted prompt: {prompt}")
+            self.log(f"Random seed used: `{seed}`\n")
+            self.log(
+                "Note: Random seed will not impact output if greedy decoding is used.\n"
+            )
 
-        if not self._testing:
+        if not self._testing and hasattr(cog, 'emit_metric'):
             # pylint: disable=no-member, undefined-loop-variable
             cog.emit_metric("input_token_count", len(result.prompt_token_ids))
             cog.emit_metric("output_token_count", len(result.outputs[0].token_ids))
+
+    def _extract_weights_path(self, weights) -> str:
+        """
+        Extract the actual path/URL from various Cog types (URLFile, URLPath, str).
+
+        This function also implements local caching: if the weights URL has been
+        downloaded before to ./checkpoints/, it will return the local path instead
+        of the URL to avoid re-downloading.
+
+        Cog may pass weights as:
+        - A plain string (URL or path)
+        - A URLFile object (has __url__ attribute)
+        - A URLPath object (has source attribute)
+
+        Args:
+            weights: The weights parameter from Cog (could be str, URLFile, URLPath, etc.)
+
+        Returns:
+            str: The actual URL or path to the weights (may be local cached path)
+        """
+        # If it's already a plain string, use it directly
+        if isinstance(weights, str):
+            weights_path = weights
+        # Try URLPath (has 'source' attribute)
+        elif hasattr(weights, 'source'):
+            weights_path = weights.source
+        # Try URLFile (has '__url__' attribute stored via __slots__)
+        # We need to use object.__getattribute__ because URLFile uses custom attribute access
+        elif hasattr(weights, '__url__'):
+            try:
+                weights_path = object.__getattribute__(weights, '__url__')
+            except AttributeError:
+                weights_path = str(weights)
+        else:
+            # Fall back to string conversion for any other types
+            weights_path = str(weights)
+
+        # Check if this is a URL and if we have it cached locally
+        if weights_path.startswith(('http://', 'https://')):
+            # Extract model name from URL
+            # Example:
+            # https://weights.replicate.delivery/default/Qwen/
+            #   Qwen3-VL-8B-Instruct/model.tar
+            # Should extract: Qwen3-VL-8B-Instruct
+            url_parts = urlparse(weights_path)
+            path_parts = url_parts.path.strip('/').split('/')
+
+            # Try to find model name in URL path
+            # Handle various URL patterns
+            model_name = None
+            if 'model.tar' in path_parts[-1]:
+                # Model name is likely the directory before model.tar
+                if len(path_parts) >= 2:
+                    model_name = path_parts[-2]
+            else:
+                # Use the last part of the URL (without .tar extension)
+                model_name = path_parts[-1].replace('.tar', '')
+
+            if model_name:
+                # Check if model exists in local checkpoints directory
+                checkpoints_dir = Path('./checkpoints')
+                local_model_path = checkpoints_dir / model_name
+
+                if local_model_path.exists() and local_model_path.is_dir():
+                    # Check if directory has files (not empty)
+                    if any(local_model_path.iterdir()):
+                        print(f"Found cached model at {local_model_path}, "
+                              f"using local path instead of downloading")
+                        return str(local_model_path)
+
+        return weights_path
 
     def load_config(self, weights: str) -> PredictorConfig:
         """

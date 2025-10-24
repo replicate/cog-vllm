@@ -2,6 +2,6 @@ pytest-asyncio
 pytest-mock
 pylint
 black
-cog==0.10.0a18
+cog==0.16.8
 attrs>=20.1,<24
 jinja2
